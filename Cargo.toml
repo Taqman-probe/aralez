@@ -2,6 +2,7 @@
 name = "aralez"
 version = "0.9.2"
 edition = "2021"
+build = "src/build.rs"
 
 [profile.release]
 opt-level = 3
@@ -9,6 +10,10 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[package.metadata.winresource]
+LegalCopyright = "Copyright (c) 2026 @sadoyan and contributors"
+FileDescription = "Aralez (Արալեզ) Reverse proxy built on top of Cloudflare's Pingora"
 
 [dependencies]
 tokio = { version = "1.52.3", features = ["full"] }
@@ -50,3 +55,6 @@ log4rs = "1.4.0"
 
 [target.'cfg(unix)'.dependencies]
 privdrop = "0.5.6"
+
+[build-dependencies]
+winresource = "0.1.31"
