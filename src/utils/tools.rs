@@ -4,21 +4,28 @@ use crate::utils::structs::{InnerMap, InnerMapForJson, UpstreamSnapshotForJson, 
 use dashmap::DashMap;
 use log::{error, info};
 use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+#[cfg(unix)]
 use privdrop::PrivDrop;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
+#[cfg(unix)]
 use std::net::SocketAddr;
+#[cfg(unix)]
 use std::net::TcpListener;
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
+#[cfg(unix)]
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::{fs, process, thread, time};
+use std::fs;
+#[cfg(unix)]
+use std::{process, thread, time};
 
 pub fn print_upstreams(upstreams: &UpstreamsDashMap) {
     let mut out = String::new();
@@ -29,14 +36,13 @@ pub fn print_upstreams(upstreams: &UpstreamsDashMap) {
             for f in path_entry.value().0.clone() {
                 writeln!(
                     out,
-                    "        IP: {}, Port: {}, SSL: {}, H2: {}, To HTTPS: {}, Rate Limit: {}, 4xx Limit: {}",
+                    "        IP: {}, Port: {}, SSL: {}, H2: {}, To HTTPS: {}, Rate Limit: {}",
                     f.address,
                     f.port,
                     f.is_ssl,
                     f.is_http2,
                     f.to_https,
-                    f.rate_limit.unwrap_or(0),
-                    f.x4xx_limit.unwrap_or(0)
+                    f.rate_limit.unwrap_or(0)
                 )
                 .unwrap();
             }
@@ -153,14 +159,13 @@ pub fn clone_idmap_into(original: &UpstreamsDashMap, cloned: &UpstreamsIdMap) {
                 let mut id = String::new();
                 write!(
                     &mut id,
-                    "{}:{}:{}:{}:{}:{}:{}:{}:{:?}",
+                    "{}:{}:{}:{}:{}:{}:{}:{:?}",
                     outer_entry.key(),
                     x.address,
                     x.port,
                     x.is_http2,
                     x.to_https,
                     x.rate_limit.unwrap_or_default(),
-                    x.x4xx_limit.unwrap_or_default(),
                     x.healthcheck.unwrap_or_default(),
                     x.authorization
                 )
@@ -179,7 +184,6 @@ pub fn clone_idmap_into(original: &UpstreamsDashMap, cloned: &UpstreamsIdMap) {
                     is_http2: false,
                     to_https: false,
                     rate_limit: None,
-                    x4xx_limit: None,
                     healthcheck: None,
                     redirect_to: None,
                     authorization: None,
@@ -250,6 +254,11 @@ pub fn watch_folder(path: String, sender: Sender<Vec<CertificateConfig>>) -> not
     }
 }
 
+#[cfg(windows)]
+pub fn drop_priv(_user: String, _group: String, _http_addr: String, _tls_addr: Option<String>) {
+    ()
+}
+#[cfg(unix)]
 pub fn drop_priv(user: String, group: String, http_addr: String, tls_addr: Option<String>) {
     thread::sleep(time::Duration::from_millis(10));
     loop {
@@ -273,6 +282,11 @@ pub fn drop_priv(user: String, group: String, http_addr: String, tls_addr: Optio
     }
 }
 
+#[cfg(windows)]
+pub fn check_priv(_addr: &str) {
+    ()
+}
+#[cfg(unix)]
 pub fn check_priv(addr: &str) {
     let port = SocketAddr::from_str(addr).map(|sa| sa.port()).unwrap();
     if port < 1024 {
@@ -306,7 +320,6 @@ pub fn upstreams_to_json(upstreams: &UpstreamsDashMap) -> serde_json::Result<Str
                             is_http2: a.is_http2,
                             to_https: a.to_https,
                             rate_limit: a.rate_limit,
-                            x4xx_limit: a.x4xx_limit,
                             healthcheck: a.healthcheck,
                         })
                         .collect(),

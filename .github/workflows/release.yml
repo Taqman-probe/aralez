@@ -1,0 +1,41 @@
+name: Release Windows Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release-windows:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build
+        shell: cmd
+        env:
+          LIBCLANG_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
+          CC: 'clang-cl'
+          CXX: 'clang-cl'
+        run: |
+          cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Package Binary (Zip)
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Path ./dist
+          Copy-Item ./target/x86_64-pc-windows-msvc/release/aralez.exe ./dist/
+          Compress-Archive -Path ./dist/* -DestinationPath ./aralez-x86_64-windows.zip
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: aralez-x86_64-windows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
