@@ -17,6 +17,9 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      - name: Set up NASM
+        uses: ilammy/setup-nasm@v1
+
       - name: Build
         shell: cmd
         env:
