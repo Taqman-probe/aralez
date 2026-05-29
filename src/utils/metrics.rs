@@ -5,6 +5,7 @@ use prometheus::{register_histogram, register_int_counter, register_int_counter_
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::time::Duration;
+#[cfg(unix)]
 use tikv_jemalloc_ctl::{epoch, stats};
 
 pub struct MetricTypes {
@@ -66,9 +67,41 @@ pub fn calc_metrics(metric_types: &MetricTypes) {
     RESPONSE_LATENCY.observe(metric_types.latency.as_secs_f64());
 }
 
+#[cfg(unix)]
 pub fn get_memory_usage() -> usize {
     epoch::mib().unwrap().advance().unwrap(); // refresh stats
     stats::allocated::mib().unwrap().read().unwrap() // bytes allocated
+}
+
+#[cfg(windows)]
+extern "C" {
+    fn mi_process_info(
+        elapsed_msecs:  *mut usize,
+        user_msecs:     *mut usize,
+        system_msecs:   *mut usize,
+        current_rss:    *mut usize,
+        peak_rss:       *mut usize,
+        current_commit: *mut usize,
+        peak_commit:    *mut usize,
+        page_faults:    *mut usize,
+    );
+}
+
+#[cfg(windows)]
+pub fn get_memory_usage() -> usize {
+    let (mut elapsed, mut user, mut system) = (0usize, 0usize, 0usize);
+    let (mut cur_rss, mut peak_rss) = (0usize, 0usize);
+    let (mut cur_commit, mut peak_commit, mut faults) = (0usize, 0usize, 0usize);
+
+    unsafe {
+        mi_process_info(
+            &mut elapsed, &mut user,   &mut system,
+            &mut cur_rss, &mut peak_rss,
+            &mut cur_commit, &mut peak_commit,
+            &mut faults,
+        );
+    };
+    cur_commit
 }
 
 pub fn get_open_files() -> usize {

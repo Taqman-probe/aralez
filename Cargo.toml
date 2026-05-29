@@ -15,6 +15,17 @@ strip = true
 LegalCopyright = "Copyright (c) 2026 @sadoyan and contributors"
 FileDescription = "Aralez (Արալեզ) Reverse proxy built on top of Cloudflare's Pingora"
 
+[target.'cfg(unix)'.dependencies]
+privdrop = "0.5.6"
+tikv-jemallocator = "0.7.0"
+tikv-jemalloc-ctl = { version = "0.7.0", features = ["stats"] }
+
+[target.'cfg(windows)'.dependencies]
+mimalloc = { version = "0.1", default-features = false }
+
+[build-dependencies]
+winresource = "0.1.31"
+
 [dependencies]
 tokio = { version = "1.52.3", features = ["full"] }
 pingora = { version = "0.8.0", features = ["lb", "boringssl"] } # openssl, rustls, boringssl
@@ -42,12 +53,7 @@ arc-swap = "1.9.1"
 prometheus = "0.14.0"
 x509-parser = "0.18.1"
 rustls-pemfile = "2.2.0"
-<<<<<<< HEAD
-tower-http = { version = "0.6.10", features = ["fs"] }
-=======
 tower-http = { version = "0.6.11", features = ["fs"] }
-privdrop = "0.5.6"
->>>>>>> upstream/main
 ctrlc = "3.5.2"
 serde_json = "1.0.150"
 subtle = "2.6.1"
@@ -56,15 +62,4 @@ ahash = "0.8.12"
 instant-acme = "0.8.5"
 rcgen = "0.14.8"
 log4rs = "1.4.0"
-<<<<<<< HEAD
 
-[target.'cfg(unix)'.dependencies]
-privdrop = "0.5.6"
-
-[build-dependencies]
-winresource = "0.1.31"
-=======
-#mimalloc = { version = "0.1.52", default-features = false }
-tikv-jemallocator = "0.7.0"
-tikv-jemalloc-ctl = { version = "0.7.0", features = ["stats"] }
->>>>>>> upstream/main
