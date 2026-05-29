@@ -104,7 +104,7 @@ impl ProxyHttp for LB {
                                     session.set_keepalive(None);
                                     session.write_response_header(Box::new(header), true).await?;
                                     if let (Some(oi), Some(oa)) = (&_ctx.hostname, rate_key) {
-                                        warn!("Limit 4XX: {}-rps exceed on {} from {}", rate, oi, oa);
+                                        warn!("Limit 4XX: {}-rps exceed on {} from {} path {}", rate, oi, oa, session.req_header().uri.path());
                                     }
                                     return Ok(true);
                                 }
@@ -229,11 +229,11 @@ impl ProxyHttp for LB {
     }
 
     async fn upstream_request_filter(&self, session: &mut Session, upstream_request: &mut RequestHeader, ctx: &mut Self::CTX) -> Result<()> {
-        if let Some(client_ip) = session.client_addr() {
+        if let Some(ip) = session.client_addr().and_then(|a| a.as_inet()).map(|i| i.ip()) {
             IP_BUFFER.with(|buffer| {
                 let mut buf = buffer.borrow_mut();
                 buf.clear();
-                write!(buf, "{}", client_ip).unwrap_or(());
+                write!(buf, "{}", ip).unwrap_or(());
                 upstream_request.append_header("X-Forwarded-For", buf.as_str()).unwrap_or(false);
             });
         }

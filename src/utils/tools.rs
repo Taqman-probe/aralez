@@ -1,6 +1,6 @@
 use crate::tls::load;
 use crate::tls::load::CertificateConfig;
-use crate::utils::structs::{InnerMap, InnerMapForJson, UpstreamSnapshotForJson, UpstreamsDashMap, UpstreamsIdMap};
+use crate::utils::structs::{InnerMap, InnerMapForJson, Extraparams, UpstreamSnapshotForJson, UpstreamsDashMap, UpstreamsIdMap};
 use dashmap::DashMap;
 use log::{error, info};
 use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -27,7 +27,7 @@ use std::fs;
 #[cfg(unix)]
 use std::{process, thread, time};
 
-pub fn print_upstreams(upstreams: &UpstreamsDashMap) {
+pub fn print_upstreams(upstreams: &UpstreamsDashMap, extraparams: &Extraparams) {
     let mut out = String::new();
     for host_entry in upstreams.iter() {
         writeln!(out, "Hostname: {}", host_entry.key()).unwrap();
@@ -42,8 +42,8 @@ pub fn print_upstreams(upstreams: &UpstreamsDashMap) {
                     f.is_ssl,
                     f.is_http2,
                     f.to_https,
-                    f.rate_limit.unwrap_or(0),
-                    f.x4xx_limit.unwrap_or(0)
+                    f.rate_limit.unwrap_or(extraparams.rate_limit.unwrap_or(0)),
+                    f.x4xx_limit.unwrap_or(extraparams.x4xx_limit.unwrap_or(0))
                 )
                 .unwrap();
             }
