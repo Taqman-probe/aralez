@@ -1,7 +1,7 @@
 use crate::tls::acme::account::get_account;
 use crate::utils::parceyaml::DOMAINS;
 use instant_acme::{ChallengeType, Identifier, NewOrder, RetryPolicy};
-use log::{error, info};
+use tracing::{error, info};
 use pingora::prelude::sleep;
 use rcgen::{CertificateParams, DistinguishedName, KeyPair};
 use std::collections::HashMap;

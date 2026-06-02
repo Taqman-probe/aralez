@@ -6,7 +6,7 @@ use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use axum::body::Bytes;
 use dashmap::DashMap;
-use log::{debug, error, warn};
+use tracing::{debug, error, warn};
 use moka::sync::Cache;
 use pingora::http::{RequestHeader, ResponseHeader, StatusCode};
 use pingora::prelude::*;

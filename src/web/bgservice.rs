@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use dashmap::DashMap;
 use futures::channel::mpsc;
 use futures::{SinkExt, StreamExt};
-use log::{error, info};
+use tracing::{error, info};
 use pingora_core::server::ShutdownWatch;
 use pingora_core::services::background::BackgroundService;
 use std::sync::Arc;

@@ -7,7 +7,7 @@ use crate::utils::tools::*;
 use crate::web::proxyhttp::LB;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
-use log::info;
+use tracing::info;
 use pingora::tls::ssl::{SslAlert, SslRef};
 use pingora_core::listeners::tls::TlsSettings;
 use pingora_core::prelude::{background_service, Opt};

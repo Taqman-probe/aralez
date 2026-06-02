@@ -11,6 +11,7 @@ use pingora_proxy::Session;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use subtle::ConstantTimeEq;
+use tracing::warn;
 use urlencoding::decode;
 
 #[async_trait::async_trait]
@@ -58,7 +59,7 @@ impl AuthValidator for ForwardAuth<'_> {
         let (mut http_session, _) = match AUTH_CONNECTOR.get_http_session(&peer).await {
             Ok(s) => s,
             Err(e) => {
-                log::warn!("ForwardAuth: connect failed: {}", e);
+                warn!("ForwardAuth: connect failed: {}", e);
                 return false;
             }
         };
@@ -66,7 +67,7 @@ impl AuthValidator for ForwardAuth<'_> {
         let mut auth_req = match RequestHeader::build(method, uri.as_bytes(), None) {
             Ok(r) => r,
             Err(e) => {
-                log::warn!("ForwardAuth: failed to build request: {}", e);
+                warn!("ForwardAuth: failed to build request: {}", e);
                 return false;
             }
         };
@@ -90,14 +91,14 @@ impl AuthValidator for ForwardAuth<'_> {
         }
 
         if let Err(e) = http_session.write_request_header(Box::new(auth_req)).await {
-            log::warn!("ForwardAuth: write failed: {}", e);
+            warn!("ForwardAuth: write failed: {}", e);
             return false;
         }
 
         let status = match http_session.read_response_header().await {
             Ok(_) => http_session.response_header().map(|r| r.status.as_u16()).unwrap_or(500),
             Err(e) => {
-                log::warn!("ForwardAuth: read failed: {}", e);
+                warn!("ForwardAuth: read failed: {}", e);
                 return false;
             }
         };
@@ -203,7 +204,7 @@ pub async fn authenticate(auth: &InnerAuth, session: &mut Session) -> bool {
         "jwt" => JwtAuth().validate(session).await,
         "forward" => ForwardAuth(&*auth.auth_cred).validate(session).await,
         _ => {
-            log::warn!("Unsupported authentication mechanism : {}", &*auth.auth_type);
+            warn!("Unsupported authentication mechanism : {}", &*auth.auth_type);
             false
         }
     }
@@ -230,7 +231,7 @@ fn split_host_port(addr: &str, tls: bool) -> Option<(&str, u16, bool, &str)> {
         Some((h, p)) => match p.parse::<u16>() {
             Ok(port) => return Some((h, port, tls, h)),
             Err(_) => {
-                log::warn!("ForwardAuth: invalid port in {}", addr);
+                warn!("ForwardAuth: invalid port in {}", addr);
                 return None;
             }
         },

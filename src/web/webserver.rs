@@ -13,7 +13,7 @@ use axum::{Json, Router};
 use futures::channel::mpsc::Sender;
 use futures::SinkExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
-use log::{debug, error, info, warn};
+use tracing::{debug, error, info, warn};
 use prometheus::{gather, Encoder, TextEncoder};
 use serde::Serialize;
 use signal_hook::{consts::SIGQUIT, iterator::Signals};
