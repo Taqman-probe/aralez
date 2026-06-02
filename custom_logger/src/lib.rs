@@ -1,4 +1,4 @@
-use default_interface::LoggerModule;
+use default_interface::{ApplicationLogHandle, LoggerModule};
 use std::path::PathBuf;
 use tracing::level_filters::LevelFilter;
 
@@ -13,7 +13,7 @@ impl LoggerModule for ApplicationLogger {
         todo!("Please implement your own logic here, referencing default/logger.rs.")
     }
 
-    fn init (self) {
+    fn init (self) -> ApplicationLogHandle{
         todo!("Please implement your own logic here, referencing default/logger.rs.")
     }
 }
