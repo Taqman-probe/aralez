@@ -1,10 +1,15 @@
 // use rustls::crypto::ring::default_provider;
+#[cfg(not(feature = "custom-logger"))]
+use crate::default::logger as default_logger;
 use crate::tls::grades;
 use crate::tls::load;
 use crate::tls::load::CertificateConfig;
 use crate::utils::structs::Extraparams;
 use crate::utils::tools::*;
 use crate::web::proxyhttp::LB;
+#[cfg(feature = "custom-logger")]
+use custom_logger;
+use default_interface::LoggerModule;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use tracing::info;
@@ -12,13 +17,16 @@ use pingora::tls::ssl::{SslAlert, SslRef};
 use pingora_core::listeners::tls::TlsSettings;
 use pingora_core::prelude::{background_service, Opt};
 use pingora_core::server::Server;
+#[cfg(unix)]
 use privdrop::reexports::libc::SIGQUIT;
+#[cfg(unix)]
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
 };
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+#[cfg(unix)]
 use std::time::Duration;
 use std::{fs, thread};
 
@@ -27,6 +35,13 @@ pub fn run() {
     let parameters = Opt::parse_args();
     let file = parameters.conf.clone().unwrap();
     let maincfg = crate::utils::parceyaml::parce_main_config(file.as_str());
+
+    #[cfg(not(feature = "custom-logger"))]
+    let _log_handle = default_logger::ApplicationLogger::new(&maincfg.log_level, &maincfg.log_file, maincfg.log_config.clone())
+        .init();
+    #[cfg(feature = "custom-logger")]
+    let _log_handle = custom_logger::ApplicationLogger::new(&maincfg.log_level, &maincfg.log_file, maincfg.log_config.clone())
+        .init();
 
     let mut server = Server::new(parameters).unwrap();
     server.bootstrap();
@@ -112,21 +127,37 @@ pub fn run() {
     server.add_service(bg_srvc);
     thread::spawn(move || server.run_forever());
 
-    if let (Some(user), Some(group)) = (cfg.rungroup.clone(), cfg.runuser.clone()) {
-        drop_priv(user, group, cfg.proxy_address_http.clone(), cfg.proxy_address_tls.clone());
-    }
-
-    let mut signals = Signals::new(&[SIGINT, SIGTERM, SIGQUIT]).unwrap();
-    for sig in signals.forever() {
-        match sig {
-            SIGINT => info!("SIGINT received! Exiting..."),
-            SIGTERM => info!("SIGTERM received! Exiting..."),
-            SIGQUIT => {
-                thread::sleep(Duration::from_secs(300));
-                info!("SIGQUIT received! Exiting...")
-            }
-            _ => unreachable!(),
+    #[cfg(unix)]
+    {
+        if let (Some(user), Some(group)) = (cfg.rungroup.clone(), cfg.runuser.clone()) {
+            drop_priv(user, group, cfg.proxy_address_http.clone(), cfg.proxy_address_tls.clone());
         }
-        break;
+
+        let mut signals = Signals::new(&[SIGINT, SIGTERM, SIGQUIT]).unwrap();
+        for sig in signals.forever() {
+            match sig {
+                SIGINT => info!("SIGINT received! Exiting..."),
+                SIGTERM => info!("SIGTERM received! Exiting..."),
+                SIGQUIT => {
+                    thread::sleep(Duration::from_secs(300));
+                    info!("SIGQUIT received! Exiting...")
+                }
+                _ => unreachable!(),
+            }
+            break;
+        }
+    }
+    #[cfg(windows)]
+    {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to build transition runtime");
+
+        rt.block_on(async {
+            tokio::signal::ctrl_c().await.expect("Failed to listen for Ctrl+C");
+        });
+
+        info!("Signal received ! Exiting...");
     }
 }

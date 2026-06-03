@@ -16,11 +16,13 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use tracing::{debug, error, info, warn};
 use prometheus::{gather, Encoder, TextEncoder};
 use serde::Serialize;
+#[cfg(unix)]
 use signal_hook::{consts::SIGQUIT, iterator::Signals};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpListener;
+#[cfg(unix)]
 use tokio::sync::mpsc;
 use tower_http::services::ServeDir;
 
@@ -80,15 +82,21 @@ pub async fn run_server(config: &APIUpstreamProvider, mut to_return: Sender<Conf
     info!("Starting the API server on: {}", config.address);
     let api_server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
 
-    let (tx, mut rx) = mpsc::channel(1);
-    std::thread::spawn(move || {
-        let mut signals = Signals::new(&[SIGQUIT]).unwrap();
-        for sig in signals.forever() {
-            tx.blocking_send(sig).unwrap();
-            break;
-        }
-    });
-    rx.recv().await; // async wait, yields to tokio properly
+    #[cfg(unix)]
+    {
+        let (tx, mut rx) = mpsc::channel(1);
+        std::thread::spawn(move || {
+            let mut signals = Signals::new(&[SIGQUIT]).unwrap();
+            for sig in signals.forever() {
+                tx.blocking_send(sig).unwrap();
+                break;
+            }
+        });
+        rx.recv().await; // async wait, yields to tokio properly
+    }
+    #[cfg(windows)]
+    tokio::signal::ctrl_c().await.expect("failed to listen for event");
+
     api_server.abort();
     if let Some(handle) = static_handle {
         handle.abort();

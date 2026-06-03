@@ -257,10 +257,6 @@ pub fn watch_folder(path: String, sender: Sender<Vec<CertificateConfig>>) -> not
     }
 }
 
-#[cfg(windows)]
-pub fn drop_priv(_user: String, _group: String, _http_addr: String, _tls_addr: Option<String>) {
-    ()
-}
 #[cfg(unix)]
 pub fn drop_priv(user: String, group: String, http_addr: String, tls_addr: Option<String>) {
     thread::sleep(time::Duration::from_millis(10));

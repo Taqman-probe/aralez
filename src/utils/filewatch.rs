@@ -3,12 +3,20 @@ use crate::utils::structs::Configuration;
 use futures::channel::mpsc::Sender;
 use futures::SinkExt;
 use tracing::error;
+#[cfg(unix)]
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use pingora::prelude::sleep;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use tokio::task;
+
+fn is_watched_event(kind: &EventKind) -> bool {
+    #[cfg(unix)]
+    return matches!(kind, EventKind::Modify(ModifyKind::Data(_)) | EventKind::Create(..) | EventKind::Remove(..));
+    #[cfg(windows)]
+    return matches!(kind, EventKind::Modify(_) | EventKind::Create(..) | EventKind::Remove(..));
+}
 
 pub async fn start(fp: String, mut toreturn: Sender<Configuration>) {
     sleep(Duration::from_millis(50)).await; // For having nice logs :-)
@@ -35,8 +43,8 @@ pub async fn start(fp: String, mut toreturn: Sender<Configuration>) {
 
     while let Some(event) = local_rx.recv().await {
         match event {
-            Ok(e) => match e.kind {
-                EventKind::Modify(ModifyKind::Data(_)) | EventKind::Create(..) | EventKind::Remove(..) => {
+            Ok(e) => {
+                if is_watched_event(&e.kind) {
                     if e.paths[0].to_str().unwrap().ends_with("yaml") && start.elapsed() > Duration::from_secs(2) {
                         start = Instant::now();
                         // info!("Config File changed :=> {:?}", e);
@@ -46,7 +54,6 @@ pub async fn start(fp: String, mut toreturn: Sender<Configuration>) {
                         }
                     }
                 }
-                _ => (),
             },
             Err(e) => error!("Watch error: {:?}", e),
         }

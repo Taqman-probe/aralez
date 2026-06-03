@@ -1,12 +1,7 @@
-#[cfg(not(feature = "custom-logger"))]
-use crate::default::logger::default_logger;
 use crate::utils::healthcheck;
 use crate::utils::state::{is_first_run, mark_not_first_run};
 use crate::utils::structs::*;
 use crate::utils::tools::{clone_dashmap, clone_dashmap_into, print_upstreams};
-#[cfg(feature = "custom-logger")]
-use custom_logger;
-use default_interface::LoggerModule;
 use dashmap::DashMap;
 use tracing::{error, info, warn};
 use std::collections::HashMap;
@@ -270,7 +265,6 @@ pub fn parce_main_config(path: &str) -> AppConfig {
         cfo.master_key = Some(jwt_key);
     };
 
-    log_builder(&cfo.log_level, &cfo.log_file, cfo.log_config.clone());
     cfo.hc_method = cfo.hc_method.to_uppercase();
     for (k, v) in cfg {
         reply.insert(k.to_string(), v.to_string());
@@ -329,12 +323,4 @@ pub fn build_headers(path_config: &Option<Vec<String>>, _config: &Configuration,
             }
         }
     }
-}
-
-fn log_builder(log_level: &str, location: &Option<String>, log_config: Option<String>) {
-    #[cfg(not(feature = "custom-logger"))]
-    default_logger::ApplicationLogger::new(log_level, location, log_config).init();
-    #[cfg(feature = "custom-logger")]
-    custom_logger::ApplicationLogger::new(log_level, location, log_config).init();
-
 }
