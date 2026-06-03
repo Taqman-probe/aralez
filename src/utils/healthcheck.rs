@@ -1,7 +1,7 @@
 use crate::utils::structs::{InnerMap, UpstreamsDashMap, UpstreamsIdMap};
 use crate::utils::tools::*;
 use dashmap::DashMap;
-use log::{error, warn};
+use tracing::{error, warn};
 use reqwest::{Client, Version};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;

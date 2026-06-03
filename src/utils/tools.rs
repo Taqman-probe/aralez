@@ -2,7 +2,7 @@ use crate::tls::load;
 use crate::tls::load::CertificateConfig;
 use crate::utils::structs::{InnerMap, InnerMapForJson, Extraparams, UpstreamSnapshotForJson, UpstreamsDashMap, UpstreamsIdMap};
 use dashmap::DashMap;
-use log::{error, info};
+use tracing::{error, info};
 use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 #[cfg(unix)]
 use privdrop::PrivDrop;

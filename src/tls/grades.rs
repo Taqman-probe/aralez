@@ -1,4 +1,4 @@
-use log::{info, warn};
+use tracing::{info, warn};
 use pingora::tls::ssl::{select_next_proto, AlpnError, SslRef, SslVersion};
 use pingora_core::listeners::tls::TlsSettings;
 

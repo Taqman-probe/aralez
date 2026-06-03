@@ -2,7 +2,7 @@ use crate::utils::parceyaml::load_configuration;
 use crate::utils::structs::Configuration;
 use futures::channel::mpsc::Sender;
 use futures::SinkExt;
-use log::error;
+use tracing::error;
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use pingora::prelude::sleep;

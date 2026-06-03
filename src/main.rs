@@ -1,6 +1,7 @@
 #[cfg(unix)]
 use tikv_jemallocator::Jemalloc;
 
+mod default;
 mod tls;
 mod utils;
 mod web;

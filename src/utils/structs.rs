@@ -130,6 +130,7 @@ pub struct AppConfig {
     pub runuser: Option<String>,
     pub rungroup: Option<String>,
     pub log_file: Option<String>,
+    pub log_config: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
