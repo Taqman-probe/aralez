@@ -46,7 +46,7 @@ impl LoggerModule for ApplicationLogger {
                 tracing_subscriber::fmt()
                     .with_writer(non_blocking_file)
                     .with_ansi(false) 
-                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S".to_string()))
+                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S%.3f".to_string()))
                     .with_target(true)
                     .with_max_level(self.level)
                     .init();
@@ -55,7 +55,7 @@ impl LoggerModule for ApplicationLogger {
             None => {
                 tracing_subscriber::fmt()
                     .with_writer(std::io::stdout)
-                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S".to_string()))
+                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S%.3f".to_string()))
                     .with_target(true)
                     .with_max_level(self.level)
                     .init();

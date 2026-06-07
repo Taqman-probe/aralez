@@ -19,6 +19,8 @@ use serde::Serialize;
 #[cfg(unix)]
 use signal_hook::{consts::SIGQUIT, iterator::Signals};
 use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpListener;
@@ -69,16 +71,14 @@ pub async fn run_server(config: &APIUpstreamProvider, mut to_return: Sender<Conf
 
     let mut static_handle: Option<tokio::task::JoinHandle<()>> = None;
     if let (Some(address), Some(folder)) = (&config.file_server_address, &config.file_server_folder) {
-        port_is_available("File Server", &address).await;
+        let static_listen = port_is_available("File Server", &address).await;
         let static_files = ServeDir::new(folder);
         let static_serve: Router = Router::new().fallback_service(static_files);
-        let static_listen = TcpListener::bind(address).await.unwrap();
         // drop(tokio::spawn(async move { axum::serve(static_listen, static_serve).await.unwrap() }));
         static_handle = Some(tokio::spawn(async move { axum::serve(static_listen, static_serve).await.unwrap() }))
     }
 
-    port_is_available("Config API", &config.address).await;
-    let listener = TcpListener::bind(config.address.clone()).await.unwrap();
+    let listener = port_is_available("Config API", &config.address).await;
     info!("Starting the API server on: {}", config.address);
     let api_server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
 
@@ -92,29 +92,15 @@ pub async fn run_server(config: &APIUpstreamProvider, mut to_return: Sender<Conf
                 break;
             }
         });
-        rx.recv().await; // async wait, yields to tokio properly
+        rx.recv().await;
     }
     #[cfg(windows)]
     tokio::signal::ctrl_c().await.expect("failed to listen for event");
-
     api_server.abort();
     if let Some(handle) = static_handle {
         handle.abort();
     }
     info!("Exiting...");
-
-    // port_is_available("Config API", &config.address).await;
-    // let listener = TcpListener::bind(config.address.clone()).await.unwrap();
-    // info!("Starting the API server on: {}", config.address);
-    // axum::serve(listener, app).await.unwrap();
-    // if let (Some(address), Some(folder)) = (&config.file_server_address, &config.file_server_folder) {
-    //     port_is_available("File Server", &address).await;
-    //     let static_files = ServeDir::new(folder);
-    //     let static_serve: Router = Router::new().fallback_service(static_files);
-    //     let static_listen = TcpListener::bind(address).await.unwrap();
-    //     static_handle = Some(tokio::spawn(async move { axum::serve(static_listen, static_serve).await.unwrap() }))
-    // }
-    //
 }
 
 async fn conf(State(st): State<AppState>, Query(params): Query<HashMap<String, String>>, content: String) -> impl IntoResponse {
@@ -248,20 +234,19 @@ async fn status(State(st): State<AppState>, Query(params): Query<HashMap<String,
         .unwrap()
 }
 
-pub async fn port_is_available(name: &str, address: &str) {
-    let addr_port = address.split(":").collect::<Vec<&str>>();
+pub async fn port_is_available(name: &str, address: &str) -> TcpListener {
+    let addr = SocketAddr::from_str(address)
+        .unwrap_or_else(|e| panic!("{}: Invalid address format: {:?}", name, e));
     let t = Duration::from_secs(2);
 
-    let mut a = addr_port[0];
-    if address == "0.0.0.0" {
-        a = "127.0.0.1";
-    }
-    let p = addr_port[1].parse::<u16>().unwrap();
-
+    //if addr.ip() == IpAddr::V4(Ipv4Addr::UNSPECIFIED) {
+    //    addr.set_ip(IpAddr::V4(Ipv4Addr::LOCALHOST));
+    //}
+    let p = addr.port();
     loop {
-        match TcpListener::bind((a, p)).await {
-            Ok(_) => {
-                break;
+        match TcpListener::bind(addr).await {
+            Ok(listener) => {
+                return listener;
             }
             Err(_) => {
                 warn!("{} port is not available: {} will try again in {:?}", name, p, t);

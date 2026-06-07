@@ -20,6 +20,8 @@ use pingora_core::server::Server;
 #[cfg(unix)]
 use privdrop::reexports::libc::SIGQUIT;
 #[cfg(unix)]
+use sd_notify::NotifyState;
+#[cfg(unix)]
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
@@ -29,6 +31,8 @@ use std::sync::Arc;
 #[cfg(unix)]
 use std::time::Duration;
 use std::{fs, thread};
+#[cfg(unix)]
+use std::process;
 
 pub fn run() {
     // default_provider().install_default().expect("Failed to install rustls crypto provider");
@@ -42,6 +46,8 @@ pub fn run() {
     #[cfg(feature = "custom-logger")]
     let _log_handle = custom_logger::ApplicationLogger::new(&maincfg.log_level, &maincfg.log_file, maincfg.log_config.clone())
         .init();
+
+    info!("features: [{}]", env!("ENABLED_FEATURES"));
 
     let mut server = Server::new(parameters).unwrap();
     server.bootstrap();
@@ -132,6 +138,8 @@ pub fn run() {
         if let (Some(user), Some(group)) = (cfg.rungroup.clone(), cfg.runuser.clone()) {
             drop_priv(user, group, cfg.proxy_address_http.clone(), cfg.proxy_address_tls.clone());
         }
+        let _ = sd_notify::notify(&[NotifyState::Ready]);
+        let _ = fs::write("/tmp/aralez.pid", process::id().to_string());
 
         let mut signals = Signals::new(&[SIGINT, SIGTERM, SIGQUIT]).unwrap();
         for sig in signals.forever() {

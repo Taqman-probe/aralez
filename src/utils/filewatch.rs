@@ -45,9 +45,8 @@ pub async fn start(fp: String, mut toreturn: Sender<Configuration>) {
         match event {
             Ok(e) => {
                 if is_watched_event(&e.kind) {
-                    if e.paths[0].to_str().unwrap().ends_with("yaml") && start.elapsed() > Duration::from_secs(2) {
+                    if start.elapsed() > Duration::from_secs(2) {
                         start = Instant::now();
-                        // info!("Config File changed :=> {:?}", e);
                         let snd = load_configuration(file_path, "filepath").await.0;
                         if let Some(snd) = snd {
                             toreturn.send(snd).await.unwrap();

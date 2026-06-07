@@ -1,20 +1,18 @@
-#[cfg(unix)]
-use tikv_jemallocator::Jemalloc;
-
 mod default;
 mod tls;
 mod utils;
 mod web;
 
-#[cfg(unix)]
-#[global_allocator]
-static ALLOC: Jemalloc = Jemalloc;
-
-#[cfg(windows)]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 // pub static A: CountingAllocator = CountingAllocator;
 
 fn main() {
+    if std::env::args().any(|a| a == "--version" || a == "-v") {
+        println!("aralez {}", env!("CARGO_PKG_VERSION"));
+        println!("features: [{}]", env!("ENABLED_FEATURES"));
+        std::process::exit(0);
+    }
+
     web::start::run();
 }

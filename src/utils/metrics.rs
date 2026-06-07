@@ -5,8 +5,6 @@ use prometheus::{register_histogram, register_int_counter, register_int_counter_
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::time::Duration;
-#[cfg(unix)]
-use tikv_jemalloc_ctl::{epoch, stats};
 
 pub struct MetricTypes {
     pub method: Method,
@@ -68,41 +66,43 @@ pub fn calc_metrics(metric_types: &MetricTypes) {
 }
 
 #[cfg(unix)]
-pub fn get_memory_usage() -> usize {
-    epoch::mib().unwrap().advance().unwrap(); // refresh stats
-    stats::allocated::mib().unwrap().read().unwrap() // bytes allocated
+pub(crate) fn get_memory_usage() -> usize {
+    std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("VmRSS:"))
+                .and_then(|l| l.split_whitespace().nth(1))
+                .and_then(|v| v.parse::<usize>().ok())
+        })
+        .unwrap_or(0)
+        * 1024
 }
 
 #[cfg(windows)]
-extern "C" {
-    fn mi_process_info(
-        elapsed_msecs:  *mut usize,
-        user_msecs:     *mut usize,
-        system_msecs:   *mut usize,
-        current_rss:    *mut usize,
-        peak_rss:       *mut usize,
-        current_commit: *mut usize,
-        peak_commit:    *mut usize,
-        page_faults:    *mut usize,
-    );
-}
-
-#[cfg(windows)]
-pub fn get_memory_usage() -> usize {
-    let (mut elapsed, mut user, mut system) = (0usize, 0usize, 0usize);
-    let (mut cur_rss, mut peak_rss) = (0usize, 0usize);
-    let (mut cur_commit, mut peak_commit, mut faults) = (0usize, 0usize, 0usize);
+pub(crate) fn get_memory_usage() -> usize {
+    use std::mem::MaybeUninit;
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+    use windows_sys::Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
 
     unsafe {
-        mi_process_info(
-            &mut elapsed, &mut user,   &mut system,
-            &mut cur_rss, &mut peak_rss,
-            &mut cur_commit, &mut peak_commit,
-            &mut faults,
-        );
-    };
-    cur_commit
+        let handle = GetCurrentProcess();
+        let mut counters = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
+        
+        if GetProcessMemoryInfo(
+            handle,
+            counters.as_mut_ptr(),
+            std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
+        ) != 0 
+        {
+            let counters = counters.assume_init();
+            counters.WorkingSetSize as usize
+        } else {
+            0
+        }
+    }
 }
+
 
 pub fn get_open_files() -> usize {
     std::fs::read_dir("/proc/self/fd").map(|dir| dir.count()).unwrap_or(0)
