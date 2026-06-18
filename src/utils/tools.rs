@@ -287,7 +287,7 @@ pub fn check_priv(_addr: &str) {
 }
 #[cfg(unix)]
 pub fn check_priv(addr: &str) {
-    let port = SocketAddr::from_str(addr).map(|sa| sa.port()).unwrap();
+    let port = SocketAddr::from_str(addr).map(|sa| sa.port()).expect("Failed to parse address port ");
     if port < 1024 {
         let meta = std::fs::metadata("/proc/self").map(|m| m.uid()).unwrap();
         if meta != 0 {
