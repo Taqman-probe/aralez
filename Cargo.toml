@@ -1,6 +1,6 @@
 [package]
 name = "aralez"
-version = "0.92.10"
+version = "0.92.11"
 edition = "2021"
 build = "src/build.rs"
 license = "Apache-2.0"
@@ -29,6 +29,11 @@ members = [
 ]
 
 [workspace.dependencies]
+pingora = { version = "0.8.1", features = ["lb", "boringssl"] } # openssl, rustls, boringssl
+pingora-core = "0.8.1"
+pingora-proxy = "0.8.1"
+pingora-http = "0.8.1"
+pingora-limits = "0.8.1"
 ahash = "0.8.12"
 arc-swap = "1.9.1"
 async-trait = "0.1.89"
@@ -43,12 +48,7 @@ jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust
 mimalloc = { version = "0.1.52", default-features = false }
 moka = { version = "0.12.15", features = ["sync"] }
 notify = "9.0.0-rc.4"
-pingora = { version = "0.8.0", features = ["lb", "boringssl"] }  # openssl, rustls, boringssl
-pingora-core = "0.8.0"
-pingora-http = "0.8.0"
-pingora-limits = "0.8.0"
-pingora-proxy = "0.8.0"
-noyalib = { version = "0.0.7", features = ["compat-serde-yaml"] }
+noyalib = { version = "0.0.8", features = ["compat-serde-yaml"] }
 privdrop = "0.5.6"
 prometheus = "0.14.0"
 rand = "0.10.1"
@@ -64,7 +64,7 @@ tikv-jemalloc-ctl = { version = "0.7.0", features = ["stats"] }
 tikv-jemallocator = "0.7.0"
 tokio = { version = "1.52.3", features = ["full"] }
 tonic = "0.14.6"
-tower-http = { version = "0.6.11", features = ["fs"] }
+tower-http = { version = "0.7.0", features = ["fs"] }
 tracing = { version = "0.1.44", features = ["release_max_level_info"] }
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3.23", features = ["chrono", "env-filter"]}
