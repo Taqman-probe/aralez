@@ -1,7 +1,6 @@
 use crate::utils::structs::InnerMap;
 use crate::web::proxyhttp::LB;
-use async_trait::async_trait;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -10,30 +9,38 @@ pub struct GetHostsReturHeaders {
     pub server_headers: Option<Vec<(String, Arc<str>)>>,
 }
 
-#[async_trait]
 pub trait GetHost {
+    fn find_sticky_backend(&self, servers: &[Arc<InnerMap>], backend_id: Option<&str>) -> Option<Arc<InnerMap>>;
+    fn pick_backend(&self, servers: &[Arc<InnerMap>], index: &AtomicUsize, backend_id: Option<&str>) -> Option<Arc<InnerMap>>;
     fn get_host(&self, peer: &str, path: &str, backend_id: Option<&str>) -> Option<Arc<InnerMap>>;
-
     fn get_header(&self, peer: &str, path: &str) -> Option<GetHostsReturHeaders>;
-    // fn get_upstreams(&self) -> Arc<UpstreamsDashMap>;
 }
-#[async_trait]
 impl GetHost for LB {
-    fn get_host(&self, peer: &str, path: &str, backend_id: Option<&str>) -> Option<Arc<InnerMap>> {
-        if let Some(b) = backend_id {
-            if let Some(bb) = self.ump_byid.get(b) {
-                return Some(bb.value().clone());
-            }
+    fn find_sticky_backend(&self, servers: &[Arc<InnerMap>], backend_id: Option<&str>) -> Option<Arc<InnerMap>> {
+        let b = backend_id?;
+        let bb = self.ump_byid.get(b)?;
+        let target = bb.value();
+        servers.iter().any(|s| s.address == target.address && s.port == target.port).then(|| target.clone())
+    }
+    fn pick_backend(&self, servers: &[Arc<InnerMap>], index: &AtomicUsize, backend_id: Option<&str>) -> Option<Arc<InnerMap>> {
+        if servers.is_empty() {
+            return None;
         }
+        if let Some(target) = self.find_sticky_backend(servers, backend_id) {
+            return Some(target);
+        }
+        let idx = index.fetch_add(1, Ordering::Relaxed) % servers.len();
+        Some(servers[idx].clone())
+    }
+    fn get_host(&self, peer: &str, path: &str, backend_id: Option<&str>) -> Option<Arc<InnerMap>> {
         let host_entry = self.ump_upst.get(peer)?;
         let mut end = path.len();
         loop {
             let slice = &path[..end];
             if let Some(entry) = host_entry.get(slice) {
                 let (servers, index) = entry.value();
-                if !servers.is_empty() {
-                    let idx = index.fetch_add(1, Ordering::Relaxed) % servers.len();
-                    return Some(servers[idx].clone());
+                if let Some(backend) = self.pick_backend(servers, index, backend_id) {
+                    return Some(backend);
                 }
             }
             if let Some(pos) = slice.rfind('/') {
@@ -44,9 +51,8 @@ impl GetHost for LB {
         }
         if let Some(entry) = host_entry.get("/") {
             let (servers, index) = entry.value();
-            if !servers.is_empty() {
-                let idx = index.fetch_add(1, Ordering::Relaxed) % servers.len();
-                return Some(servers[idx].clone());
+            if let Some(backend) = self.pick_backend(servers, index, backend_id) {
+                return Some(backend);
             }
         }
         None
