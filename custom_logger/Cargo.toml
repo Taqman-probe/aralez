@@ -6,6 +6,5 @@ edition = "2021"
 [dependencies]
 default-interface = { path = "../default_interface" }
 rolling-file   = "0.2"
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing-appender = { workspace = true }
+log = { workspace = true }
+log4rs = { workspace = true }

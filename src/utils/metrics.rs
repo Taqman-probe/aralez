@@ -15,21 +15,13 @@ pub struct MetricTypes {
 }
 
 pub static OPEN_FILES: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_open_files", "Number of open file descriptors").unwrap());
+pub static LOGGING_ERRORS: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_logging_errors", "Number of log errors").unwrap());
 pub static MEMORY_USAGE: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_memory_bytes", "Total memory allocated in bytes").unwrap());
 pub static ACTIVE_SESSIONS: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_active_sessions", "Current number of active sessions").unwrap());
 pub static REQUEST_COUNT: LazyLock<IntCounter> = LazyLock::new(|| register_int_counter!("aralez_requests_total", "Total number of requests handled by Aralez").unwrap());
 
 pub static RESPONSE_CODES: LazyLock<IntCounterVec> =
     LazyLock::new(|| register_int_counter_vec!("aralez_responses_total", "Responses grouped by status code", &["status"]).unwrap());
-
-// pub static RESPONSE_LATENCY: LazyLock<Histogram> = LazyLock::new(|| {
-//     register_histogram!(
-//         "aralez_response_latency_seconds",
-//         "Response latency in seconds",
-//         vec![0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-//     )
-//     .unwrap()
-// });
 
 pub static RESPONSE_LATENCY: LazyLock<Histogram> = LazyLock::new(|| {
     register_histogram!(

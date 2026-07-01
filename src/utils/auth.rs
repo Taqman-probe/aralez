@@ -11,7 +11,7 @@ use pingora_proxy::Session;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use subtle::ConstantTimeEq;
-use tracing::warn;
+use log::warn;
 use urlencoding::decode;
 
 #[async_trait::async_trait]

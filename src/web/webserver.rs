@@ -10,10 +10,8 @@ use axum::http::{Response, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{any, get, post};
 use axum::{Json, Router};
-use futures::channel::mpsc::Sender;
-use futures::SinkExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
-use tracing::{debug, error, info, warn};
+use log::{debug, error, info, warn};
 use prometheus::{gather, Encoder, TextEncoder};
 use serde::Serialize;
 #[cfg(unix)]
@@ -24,7 +22,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpListener;
-#[cfg(unix)]
 use tokio::sync::mpsc;
 use tower_http::services::ServeDir;
 
@@ -39,14 +36,14 @@ pub(crate) struct AppState {
     pub(crate) cert_creds: String,
     pub(crate) certs_dir: String,
     upstreams_file: String,
-    config_sender: Sender<Configuration>,
+    config_sender: mpsc::Sender<Configuration>,
     config_api_enabled: bool,
     current_upstreams: Arc<UpstreamsDashMap>,
     full_upstreams: Arc<UpstreamsDashMap>,
 }
 
 #[allow(unused_mut)]
-pub async fn run_server(config: &APIUpstreamProvider, mut to_return: Sender<Configuration>, upstreams_curr: Arc<UpstreamsDashMap>, upstreams_full: Arc<UpstreamsDashMap>) {
+pub async fn run_server(config: &APIUpstreamProvider, mut to_return: mpsc::Sender<Configuration>, upstreams_curr: Arc<UpstreamsDashMap>, upstreams_full: Arc<UpstreamsDashMap>) {
     let credsfile = config.config_dir.clone() + "/acme_credentials.json";
     let app_state = AppState {
         master_key: config.masterkey.clone(),
@@ -126,7 +123,7 @@ async fn conf(State(st): State<AppState>, Query(params): Query<HashMap<String, S
     }
 }
 
-async fn apply_config(content: &str, mut st: AppState, save: bool) {
+async fn apply_config(content: &str, st: AppState, save: bool) {
     let sl = crate::utils::parceyaml::load_configuration(content, "content").await;
     if let Some(serverlist) = sl.0 {
         if save {

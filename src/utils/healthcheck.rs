@@ -2,7 +2,7 @@ use crate::utils::lazylock::REVERSE_STORE;
 use crate::utils::structs::{InnerMap, UpstreamsDashMap, UpstreamsIdMap};
 use crate::utils::tools::*;
 use dashmap::DashMap;
-use tracing::{error, warn};
+use log::{error, warn};
 use reqwest::{Client, Version};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;

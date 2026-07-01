@@ -1,14 +1,13 @@
 use crate::utils::parceyaml::load_configuration;
 use crate::utils::structs::Configuration;
-use futures::channel::mpsc::Sender;
-use futures::SinkExt;
-use tracing::error;
+use log::error;
 #[cfg(unix)]
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use pingora::prelude::sleep;
 use std::path::Path;
 use std::time::{Duration, Instant};
+use tokio::sync::mpsc::Sender;
 use tokio::task;
 
 fn is_watched_event(kind: &EventKind) -> bool {
@@ -18,7 +17,7 @@ fn is_watched_event(kind: &EventKind) -> bool {
     return matches!(kind, EventKind::Modify(_) | EventKind::Create(..) | EventKind::Remove(..));
 }
 
-pub async fn start(fp: String, mut toreturn: Sender<Configuration>) {
+pub async fn start(fp: String, toreturn: Sender<Configuration>) {
     sleep(Duration::from_millis(50)).await; // For having nice logs :-)
     let file_path = fp.as_str();
     let parent_dir = Path::new(file_path).parent().unwrap();

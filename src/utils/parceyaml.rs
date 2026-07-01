@@ -4,7 +4,7 @@ use crate::utils::state::{is_first_run, mark_not_first_run};
 use crate::utils::structs::*;
 use crate::utils::tools::{clone_dashmap, clone_dashmap_into, print_upstreams};
 use dashmap::DashMap;
-use tracing::{error, info, warn};
+use log::{error, info, warn};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
@@ -151,7 +151,7 @@ async fn populate_headers_and_auth(config: &mut Configuration, parsed: &Config) 
     let mut ch: Vec<(String, Arc<str>)> = Vec::new();
     if let Some(headers) = &parsed.client_headers {
         for header in headers {
-            if let Some((key, val)) = header.rsplit_once(':') {
+            if let Some((key, val)) = header.split_once(':') {
                 ch.push((key.to_string(), Arc::from(val)));
             }
         }
@@ -164,7 +164,7 @@ async fn populate_headers_and_auth(config: &mut Configuration, parsed: &Config) 
     let mut sh: Vec<(String, Arc<str>)> = Vec::new();
     if let Some(headers) = &parsed.server_headers {
         for header in headers {
-            if let Some((key, val)) = header.rsplit_once(':') {
+            if let Some((key, val)) = header.split_once(':') {
                 sh.push((key.to_string(), Arc::from(val.trim())));
             }
         }
@@ -314,7 +314,7 @@ fn parce_tls_grades(what: Option<String>) -> Option<String> {
 pub fn build_headers(path_config: &Option<Vec<String>>, _config: &Configuration, hl: &mut Vec<(String, Arc<str>)>) {
     if let Some(headers) = &path_config {
         for header in headers {
-            if let Some((key, val)) = header.rsplit_once(':') {
+            if let Some((key, val)) = header.split_once(':') {
                 hl.push((key.trim().to_string(), Arc::from(val.trim())));
             }
         }

@@ -1,58 +1,57 @@
 use default_interface::{ApplicationLogHandle, LoggerModule};
-use std::path::{Path, PathBuf};
-use tracing::level_filters::LevelFilter;
+use log::LevelFilter;
+use log4rs::{
+    append::{console::ConsoleAppender, file::FileAppender},
+    config::{Appender, Config as Log4rsConfig, Root},
+    encode::pattern::PatternEncoder,
+};
 
 pub struct ApplicationLogger {
     pub level: LevelFilter,
-    pub path: Option<PathBuf>,
+    pub location: Option<String>,
     pub _config: Option<String>
 }
 
 impl LoggerModule for ApplicationLogger {
-    fn new(level_str: &str, location: &Option<String>, config: Option<String>) -> Self {
+    fn new(level_str: &str, location: Option<String>, config: Option<String>) -> Self {
         let log_level = match level_str.to_lowercase().as_str() {
-            "info"  => LevelFilter::INFO,
-            "error" => LevelFilter::ERROR,
-            "warn"  => LevelFilter::WARN,
-            "debug" => LevelFilter::DEBUG,
-            "trace" => LevelFilter::TRACE,
-            "off"   => LevelFilter::OFF,
+            "info"  => LevelFilter::Info,
+            "error" => LevelFilter::Error,
+            "warn"  => LevelFilter::Warn,
+            "debug" => LevelFilter::Debug,
+            "trace" => LevelFilter::Trace,
+            "off"   => LevelFilter::Off,
             _ => {
                 println!("Error reading log level, defaulting to: INFO");
-                LevelFilter::INFO
+                LevelFilter::Info
             }
         };
-            Self {
+        Self {
             level: log_level,
-            path: location.as_ref().map(PathBuf::from),
+            location: location,
             _config: config,
         }
     }
 
     fn init (self) -> ApplicationLogHandle{
-        match self.path {
+        let pattern = "{d(%Y-%m-%d %H:%M:%S)} {l} {t} - {m}\n";
+        match self.location {
             Some(p) => {
-                let appender = tracing_appender::rolling::never(
-                    p.parent().unwrap_or_else(|| Path::new(".")),
-                    p.file_name().unwrap(),
-                );
-
-                tracing_subscriber::fmt()
-                    .with_writer(appender)
-                    .with_ansi(false)
-                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S".to_string()))
-                    .with_target(true)
-                    .with_max_level(self.level)
-                    .init();
+                let file = FileAppender::builder().encoder(Box::new(PatternEncoder::new(pattern))).build(&p).unwrap();
+                let config = Log4rsConfig::builder()
+                    .appender(Appender::builder().build("file", Box::new(file)))
+                    .build(Root::builder().appender("file").build(self.level))
+                    .unwrap();
+                log4rs::init_config(config).unwrap();
                 ApplicationLogHandle::empty()
             },
             None => {
-                tracing_subscriber::fmt()
-                    .with_writer(std::io::stdout)
-                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S".to_string()))
-                    .with_target(true)
-                    .with_max_level(self.level)
-                    .init();
+                let stdout = ConsoleAppender::builder().encoder(Box::new(PatternEncoder::new(pattern))).build();
+                let config = Log4rsConfig::builder()
+                    .appender(Appender::builder().build("stdout", Box::new(stdout)))
+                    .build(Root::builder().appender("stdout").build(self.level))
+                    .unwrap();
+                log4rs::init_config(config).unwrap();
                 ApplicationLogHandle::empty()
             }
         }

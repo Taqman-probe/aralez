@@ -1,8 +1,20 @@
 use default_interface::{ApplicationLogHandle, LoggerModule};
-use rolling_file::{BasicRollingFileAppender, RollingConditionBasic};
+use log::LevelFilter;
+use log4rs::{
+    append::console::ConsoleAppender,
+    append::rolling_file::{
+        policy::compound::{
+            CompoundPolicy,
+            roll::fixed_window::FixedWindowRoller,
+            trigger::size::SizeTrigger,
+        },
+        RollingFileAppender,
+    },
+    config::{Appender, Config as Log4rsConfig, Root},
+    encode::pattern::PatternEncoder,
+};
 use std::path::PathBuf;
-use tracing_appender::non_blocking;
-use tracing::level_filters::LevelFilter;
+
 
 pub struct ApplicationLogger {
     level: LevelFilter,
@@ -11,17 +23,17 @@ pub struct ApplicationLogger {
 }
 
 impl LoggerModule for ApplicationLogger {
-    fn new(level_str: &str, location: &Option<String>, config: Option<String>) -> Self {
+    fn new(level_str: &str, location: Option<String>, config: Option<String>) -> Self {
         let log_level = match level_str.to_lowercase().as_str() {
-            "info"  => LevelFilter::INFO,
-            "error" => LevelFilter::ERROR,
-            "warn"  => LevelFilter::WARN,
-            "debug" => LevelFilter::DEBUG,
-            "trace" => LevelFilter::TRACE,
-            "off"   => LevelFilter::OFF,
+            "info"  => LevelFilter::Info,
+            "error" => LevelFilter::Error,
+            "warn"  => LevelFilter::Warn,
+            "debug" => LevelFilter::Debug,
+            "trace" => LevelFilter::Trace,
+            "off"   => LevelFilter::Off,
             _ => {
                 println!("Error reading log level, defaulting to: INFO");
-                LevelFilter::INFO
+                LevelFilter::Info
             }
         };
         Self {
@@ -32,34 +44,40 @@ impl LoggerModule for ApplicationLogger {
     }
 
     fn init (self) -> ApplicationLogHandle {
+        let pattern = "{d(%Y-%m-%d %H:%M:%S%.3f)} {l} {t} - {m}\n";
         match self.path {
             Some(p) => {
+                // ファイルサイズローテーション
                 let size_mb: i16 = self.config.as_deref().and_then(|s| s.parse().ok()).unwrap_or(200);
-                let appender = BasicRollingFileAppender::new(
-                    p,
-                    RollingConditionBasic::new().max_size(size_mb as u64 * 1024 * 1024),
-                    5,
-                )
-                .expect("Failed initialize of Log file.");
-                let (non_blocking_file, guard) = non_blocking(appender);
+                let max_size_bytes = size_mb as u64 * 1024 * 1024;
+                let trigger = SizeTrigger::new(max_size_bytes);
+                let roller = FixedWindowRoller::builder()
+                    .base(1) // ログファイル名.1 から開始
+                    .build(&format!("{}.{{}}", p.display()), 5) // 最大5番（5世代）まで保持
+                    .expect("Failed to build roller");
 
-                tracing_subscriber::fmt()
-                    .with_writer(non_blocking_file)
-                    .with_ansi(false) 
-                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S%.3f".to_string()))
-                    .with_target(true)
-                    .with_max_level(self.level)
-                    .init();
-                ApplicationLogHandle::new(guard)
+                let policy = CompoundPolicy::new(Box::new(trigger), Box::new(roller));
+
+                let file_appender = RollingFileAppender::builder()
+                    .encoder(Box::new(PatternEncoder::new(pattern)))
+                    .build(p, Box::new(policy))
+                    .expect("Failed initialize of Log file.");
+
+                let config = Log4rsConfig::builder()
+                    .appender(Appender::builder().build("file", Box::new(file_appender)))
+                    .build(Root::builder().appender("file").build(self.level))
+                    .unwrap();
+                let handle =log4rs::init_config(config).unwrap();
+                ApplicationLogHandle::new(handle)
             },
             None => {
-                tracing_subscriber::fmt()
-                    .with_writer(std::io::stdout)
-                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S%.3f".to_string()))
-                    .with_target(true)
-                    .with_max_level(self.level)
-                    .init();
-                ApplicationLogHandle::empty()
+                let stdout = ConsoleAppender::builder().encoder(Box::new(PatternEncoder::new(pattern))).build();
+                let config = Log4rsConfig::builder()
+                    .appender(Appender::builder().build("stdout", Box::new(stdout)))
+                    .build(Root::builder().appender("stdout").build(self.level))
+                    .unwrap();
+                let handle = log4rs::init_config(config).unwrap();
+                ApplicationLogHandle::new(handle)
             }
         }
     }

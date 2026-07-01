@@ -1,5 +1,5 @@
 use instant_acme::{Account, AccountCredentials, LetsEncrypt, NewAccount};
-use tracing::info;
+use log::info;
 use std::fs;
 use std::path::Path;
 use std::sync::OnceLock;

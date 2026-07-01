@@ -13,7 +13,7 @@ use custom_logger;
 use default_interface::LoggerModule;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
-use tracing::info;
+use log::info;
 use pingora::tls::ssl::{SslAlert, SslRef};
 use pingora_core::listeners::tls::TlsSettings;
 use pingora_core::listeners::TcpSocketOptions;
@@ -43,10 +43,10 @@ pub fn run() {
     let maincfg = crate::utils::parceyaml::parce_main_config(file.as_str());
 
     #[cfg(not(feature = "custom-logger"))]
-    let _log_handle = default_logger::ApplicationLogger::new(&maincfg.log_level, &maincfg.log_file, maincfg.log_config.clone())
+    let _log_handle = default_logger::ApplicationLogger::new(&maincfg.log_level, maincfg.log_file.clone(), maincfg.log_config.clone())
         .init();
     #[cfg(feature = "custom-logger")]
-    let _log_handle = custom_logger::ApplicationLogger::new(&maincfg.log_level, &maincfg.log_file, maincfg.log_config.clone())
+    let _log_handle = custom_logger::ApplicationLogger::new(&maincfg.log_level, maincfg.log_file.clone(), maincfg.log_config.clone())
         .init();
 
     info!("features: [{}]", env!("ENABLED_FEATURES"));

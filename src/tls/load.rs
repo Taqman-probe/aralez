@@ -1,6 +1,6 @@
 use crate::tls::grades;
 use dashmap::DashMap;
-use tracing::{debug, error};
+use log::{debug, error};
 use pingora::tls::ssl::{NameType, SniError, SslAlert, SslContext, SslFiletype, SslMethod, SslRef};
 use rustls_pemfile::{read_one, Item};
 use serde::Deserialize;
