@@ -102,7 +102,7 @@ pub fn run() {
         to.tcp_keepalive = Some(TcpKeepalive {
             idle: Duration::from_secs(idle),
             interval: Duration::from_secs(cfg.tcp_keepalive_interval.unwrap_or(10)),
-            #[cfg(target_os = "linux")]
+            #[cfg(target_os = "unix")]
             user_timeout: Default::default(),
             count: cfg.tcp_keepalive_count.unwrap_or(5usize),
         });

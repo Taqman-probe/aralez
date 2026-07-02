@@ -1,6 +1,6 @@
 use crate::tls::grades;
 use dashmap::DashMap;
-use log::{debug, error};
+use log::error;
 use pingora::tls::ssl::{NameType, SniError, SslAlert, SslContext, SslFiletype, SslMethod, SslRef};
 use rustls_pemfile::{read_one, Item};
 use serde::Deserialize;
@@ -88,7 +88,7 @@ impl Certificates {
 
     pub fn server_name_callback(&self, ssl_ref: &mut SslRef, ssl_alert: &mut SslAlert) -> Result<(), SniError> {
         let server_name = ssl_ref.servername(NameType::HOST_NAME);
-        debug!("TLS connect: server_name = {:?}, ssl_ref = {:?}, ssl_alert = {:?}", server_name, ssl_ref, ssl_alert);
+        log::debug!("TLS connect: server_name = {:?}, ssl_ref = {:?}, ssl_alert = {:?}", server_name, ssl_ref, ssl_alert);
         // let start_time = Instant::now();
         if let Some(name) = server_name {
             match self.find_ssl_context(name) {
@@ -96,7 +96,7 @@ impl Certificates {
                     ssl_ref.set_ssl_context(&ctx).map_err(|_| SniError::ALERT_FATAL)?;
                 }
                 None => {
-                    debug!("No matching server name found");
+                    log::debug!("No matching server name found");
                 }
             }
         }
@@ -112,24 +112,24 @@ pub fn load_cert_info(cert_path: &str, key_path: &str, _grade: &str) -> Option<C
     let file = File::open(cert_path);
     match file {
         Err(e) => {
-            error!("Failed to open certificate file: {:?}", e);
+            log::error!("Failed to open certificate file: {:?}", e);
             return None;
         }
         Ok(file) => {
             let mut reader = BufReader::new(file);
             match read_one(&mut reader) {
                 Err(e) => {
-                    error!("Failed to decode PEM from certificate file: {:?}", e);
+                    log::error!("Failed to decode PEM from certificate file: {:?}", e);
                     return None;
                 }
                 Ok(leaf) => match leaf {
                     Some(Item::X509Certificate(cert)) => match X509Certificate::from_der(&cert) {
                         Err(NomErr::Error(e)) | Err(NomErr::Failure(e)) => {
-                            error!("Failed to parse certificate: {:?}", e);
+                            log::error!("Failed to parse certificate: {:?}", e);
                             return None;
                         }
                         Err(_) => {
-                            error!("Unknown error while parsing certificate");
+                            log::error!("Unknown error while parsing certificate");
                             return None;
                         }
                         Ok((_, x509)) => {
@@ -153,7 +153,7 @@ pub fn load_cert_info(cert_path: &str, key_path: &str, _grade: &str) -> Option<C
                         }
                     },
                     _ => {
-                        error!("Failed to read certificate");
+                        log::error!("Failed to read certificate");
                         return None;
                     }
                 },
@@ -170,7 +170,7 @@ pub fn load_cert_info(cert_path: &str, key_path: &str, _grade: &str) -> Option<C
             ssl_context,
         })
     } else {
-        error!("Failed to create SSL context from cert paths");
+        log::error!("Failed to create SSL context from cert paths");
         None
     }
 }
