@@ -135,7 +135,11 @@ dependencies = [
  "axum",
  "base16ct 1.0.0",
  "base64",
+ "custom-access-log",
+ "custom-logger",
  "dashmap",
+ "default-interface",
+ "http",
  "instant-acme",
  "jsonwebtoken",
  "libc",
@@ -528,7 +532,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -748,6 +754,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom-access-log"
+version = "0.92.11"
+dependencies = [
+ "default-interface",
+ "log",
+]
+
+[[package]]
+name = "custom-logger"
+version = "0.92.11"
+dependencies = [
+ "default-interface",
+ "log",
+ "log4rs",
+ "rolling-file",
+]
+
+[[package]]
 name = "daemonize"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -819,6 +843,17 @@ name = "data-encoding"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
+
+[[package]]
+name = "default-interface"
+version = "0.92.11"
+dependencies = [
+ "http",
+ "log",
+ "pingora-http",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "der"
@@ -1408,9 +1443,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.4.0"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ba2a386d7f85a81f119ad7498ebe444d2e22c2af0b86b069416ace48b3311a"
+checksum = "6970f50e31d6fc17d3fa27329444bfa74e196cf62e95052a3f6fee181dba6425"
 dependencies = [
  "bytes",
  "itoa",
@@ -3240,6 +3275,15 @@ checksum = "72f81bee8c8ef9b577d1681a70ebbc962c232461e397b22c208c43c04b67a155"
 dependencies = [
  "rmp",
  "serde",
+]
+
+[[package]]
+name = "rolling-file"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8395b4f860856b740f20a296ea2cd4d823e81a2658cf05ef61be22916026a906"
+dependencies = [
+ "chrono",
 ]
 
 [[package]]

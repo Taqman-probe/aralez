@@ -1,0 +1,8 @@
+[package]
+name = "custom-access-log"
+version = "0.92.11"
+edition = "2021"
+
+[dependencies]
+default-interface = { path = "../default_interface" }
+log = { workspace = true }

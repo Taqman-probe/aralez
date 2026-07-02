@@ -130,18 +130,19 @@ pub struct AppConfig {
     pub runuser: Option<String>,
     pub rungroup: Option<String>,
     pub log_file: Option<String>,
+    pub log_config: Option<String>,
     pub tcp_keepalive_idle: Option<u64>,
     pub tcp_keepalive_interval: Option<u64>,
     pub tcp_keepalive_count: Option<usize>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct InnerAuth {
     pub auth_type: Arc<str>,
     pub auth_cred: Arc<str>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct InnerMap {
     pub address: Arc<str>,
     pub port: u16,

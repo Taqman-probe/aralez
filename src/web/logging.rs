@@ -1,19 +1,19 @@
+#[cfg(not(feature = "custom-access-log"))]
+use crate::default::access_log::DefaultAccessLog;
 use crate::utils::metrics::LOGGING_ERRORS;
+use crate::web::proxyhttp::Context;
+#[cfg(feature = "custom-access-log")]
+use custom_access_log::CustomAccessLog;
+use default_interface::AccessLog;
+use default_interface::LogMessage;
 use log::info;
-use pingora_http::Version;
 use pingora_proxy::Session;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::OnceLock;
 use tokio::sync::mpsc;
 
-#[derive(Debug)]
-pub struct LogMessage {
-    pub response_code: u16,
-    pub summary: String,
-    pub client_ip: IpAddr,
-    pub version: Version,
-    pub user_agent: String,
-}
+
+
 static LOG_SENDER: OnceLock<mpsc::Sender<LogMessage>> = OnceLock::new();
 static ACCESS_LOG: OnceLock<LogLevel> = OnceLock::new();
 const LOG_BUFFER: usize = 16384;
@@ -40,7 +40,7 @@ impl LogLevel {
     }
 }
 
-pub fn access_log(response_code: u16, summary: &str, session: &Session) {
+pub fn access_log(response_code: u16, summary: &str, session: &Session, ctx: &Context) {
     let level = ACCESS_LOG.get().unwrap_or(&LogLevel::None);
 
     let should_log = match level {
@@ -59,14 +59,20 @@ pub fn access_log(response_code: u16, summary: &str, session: &Session) {
         .map(|addr| addr.ip())
         .unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
 
-    let user_agent = session.req_header().headers.get("user-agent").and_then(|v| v.to_str().ok()).unwrap_or("-");
+    //let user_agent = session.req_header().headers.get("user-agent").and_then(|v| v.to_str().ok()).unwrap_or("-");
 
     let log = LogMessage {
         response_code,
         summary: summary.to_owned(),
         client_ip: ip,
         version: session.req_header().version,
-        user_agent: user_agent.to_owned(),
+        headers: session.req_header().headers.clone(),
+        matched_path: ctx.matched_path.clone(),
+        backend_id: ctx.backend_id.clone(),
+        start_time: ctx.start_time,
+        upstream_peer: serde_json::to_value(ctx.upstream_peer.clone()).ok(),
+        client_headers: ctx.client_headers.clone(),
+        x4xx_limit: ctx.x4xx_limit,
     };
 
     if let Some(sender) = LOG_SENDER.get() {
@@ -89,9 +95,9 @@ pub fn init_logging(enabled: Option<String>) {
 
 pub fn log_receiver(mut receiver: mpsc::Receiver<LogMessage>) {
     while let Some(msg) = receiver.blocking_recv() {
-        info!(
-            "{}, {}, client: {}, version: {:?}, useragent: {}",
-            msg.response_code, msg.summary, msg.client_ip, msg.version, msg.user_agent,
-        );
+        #[cfg(not(feature = "custom-access-log"))]
+        DefaultAccessLog::info(msg);
+        #[cfg(feature = "custom-access-log")]
+        CustomAccessLog::info(msg);
     }
 }

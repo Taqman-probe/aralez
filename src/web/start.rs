@@ -1,4 +1,6 @@
 // use rustls::crypto::ring::default_provider;
+#[cfg(not(feature = "custom-logger"))]
+use crate::default::logger as default_logger;
 use crate::tls::grades;
 use crate::tls::load;
 use crate::tls::load::CertificateConfig;
@@ -6,6 +8,9 @@ use crate::utils::structs::Extraparams;
 use crate::utils::tools::*;
 use crate::web::logging::init_access_log;
 use crate::web::proxyhttp::LB;
+#[cfg(feature = "custom-logger")]
+use custom_logger;
+use default_interface::LoggerModule;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use log::info;
@@ -31,6 +36,15 @@ pub fn run() {
     let parameters = Opt::parse_args();
     let file = parameters.conf.clone().unwrap();
     let maincfg = crate::utils::parceyaml::parce_main_config(file.as_str());
+
+    #[cfg(not(feature = "custom-logger"))]
+    let _log_handle = default_logger::ApplicationLogger::new(&maincfg.log_level, maincfg.log_file.clone(), maincfg.log_config.clone())
+        .init();
+    #[cfg(feature = "custom-logger")]
+    let _log_handle = custom_logger::ApplicationLogger::new(&maincfg.log_level, maincfg.log_file.clone(), maincfg.log_config.clone())
+        .init();
+
+    info!("features: [{}]", env!("ENABLED_FEATURES"));
 
     let mut server = Server::new(parameters).unwrap();
     server.bootstrap();

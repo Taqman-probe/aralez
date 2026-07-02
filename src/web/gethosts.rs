@@ -12,7 +12,7 @@ pub struct GetHostsReturHeaders {
 pub trait GetHost {
     fn find_sticky_backend(&self, servers: &[Arc<InnerMap>], backend_id: Option<&str>) -> Option<Arc<InnerMap>>;
     fn pick_backend(&self, servers: &[Arc<InnerMap>], index: &AtomicUsize, backend_id: Option<&str>) -> Option<Arc<InnerMap>>;
-    fn get_host(&self, peer: &str, path: &str, backend_id: Option<&str>) -> Option<Arc<InnerMap>>;
+    fn get_host(&self, peer: &str, path: &str, backend_id: Option<&str>) -> Option<(Arc<String>, Arc<InnerMap>)>;
     fn get_header(&self, peer: &str, path: &str) -> Option<GetHostsReturHeaders>;
 }
 impl GetHost for LB {
@@ -32,7 +32,7 @@ impl GetHost for LB {
         let idx = index.fetch_add(1, Ordering::Relaxed) % servers.len();
         Some(servers[idx].clone())
     }
-    fn get_host(&self, peer: &str, path: &str, backend_id: Option<&str>) -> Option<Arc<InnerMap>> {
+    fn get_host(&self, peer: &str, path: &str, backend_id: Option<&str>) -> Option<(Arc<String>, Arc<InnerMap>)> {
         let host_entry = self.ump_upst.get(peer)?;
         let mut end = path.len();
         loop {
@@ -40,7 +40,7 @@ impl GetHost for LB {
             if let Some(entry) = host_entry.get(slice) {
                 let (servers, index) = entry.value();
                 if let Some(backend) = self.pick_backend(servers, index, backend_id) {
-                    return Some(backend);
+                    return Some((Arc::new(slice.to_string()), backend));
                 }
             }
             if let Some(pos) = slice.rfind('/') {
@@ -52,7 +52,7 @@ impl GetHost for LB {
         if let Some(entry) = host_entry.get("/") {
             let (servers, index) = entry.value();
             if let Some(backend) = self.pick_backend(servers, index, backend_id) {
-                return Some(backend);
+                return Some((Arc::new("/".to_string()), backend));
             }
         }
         None

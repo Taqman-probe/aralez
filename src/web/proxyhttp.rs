@@ -34,13 +34,14 @@ pub struct LB {
 }
 
 pub struct Context {
-    backend_id: Option<String>,
-    start_time: Instant,
-    hostname: Option<Arc<str>>,
-    upstream_peer: Option<Arc<InnerMap>>,
-    extraparams: arc_swap::Guard<Arc<Extraparams>>,
-    client_headers: Option<Vec<(String, Arc<str>)>>,
-    x4xx_limit: Option<u32>,
+    pub backend_id: Option<String>,
+    pub start_time: Instant,
+    pub hostname: Option<Arc<str>>,
+    pub upstream_peer: Option<Arc<InnerMap>>,
+    pub extraparams: arc_swap::Guard<Arc<Extraparams>>,
+    pub client_headers: Option<Vec<(String, Arc<str>)>>,
+    pub x4xx_limit: Option<u32>,
+    pub matched_path: Option<Arc<String>>,
 }
 
 #[async_trait]
@@ -55,14 +56,15 @@ impl ProxyHttp for LB {
             extraparams: self.extraparams.load(),
             client_headers: None,
             x4xx_limit: None,
+            matched_path: None,
         }
     }
-    async fn request_filter(&self, session: &mut Session, _ctx: &mut Self::CTX) -> Result<bool> {
+    async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool> {
         ACTIVE_SESSIONS.inc();
         let hostname = return_header_host_from_upstream(session, &self.ump_upst);
-        _ctx.hostname = hostname;
+        ctx.hostname = hostname;
         let mut backend_id = None;
-        if let Some(_) = _ctx.extraparams.sticky_sessions {
+        if let Some(_) = ctx.extraparams.sticky_sessions {
             if let Some(cookies) = session.req_header().headers.get("cookie") {
                 if let Ok(cookie_str) = cookies.to_str() {
                     if let Some(pos) = cookie_str.find("backend_id=") {
@@ -73,21 +75,23 @@ impl ProxyHttp for LB {
                 }
             }
         }
-        match _ctx.hostname.as_ref() {
+        match ctx.hostname.as_ref() {
             None => return Ok(false),
             Some(host) => {
-                let optioninnermap = self.get_host(host, session.req_header().uri.path(), backend_id);
-                match optioninnermap {
+                let host_info = self.get_host(host, session.req_header().uri.path(), backend_id);
+                match host_info {
                     None => return Ok(false),
-                    Some(ref innermap) => {
-                        if let Some(auth) = _ctx.extraparams.authentication.as_ref().or(innermap.authorization.as_ref()) {
+                    Some((matched_path, ref innermap)) => {
+                        ctx.matched_path = Some(matched_path);
+                        ctx.upstream_peer = Some(innermap.clone());
+                        if let Some(auth) = ctx.extraparams.authentication.as_ref().or(innermap.authorization.as_ref()) {
                             if !authenticate(&auth, session).await {
                                 let _ = session.respond_error(401).await;
                                 return Ok(true);
                             }
                         }
-                        if let Some(rate) = innermap.x4xx_limit.or(_ctx.extraparams.x4xx_limit) {
-                            _ctx.x4xx_limit = innermap.x4xx_limit;
+                        if let Some(rate) = innermap.x4xx_limit.or(ctx.extraparams.x4xx_limit) {
+                            ctx.x4xx_limit = innermap.x4xx_limit;
                             let rate_key = session.client_addr().and_then(|addr| addr.as_inet()).map(|inet| inet.ip());
                             if let Some(rk) = rate_key {
                                 let count = REQUESTS_4XX.get(&rk).unwrap_or(0);
@@ -99,7 +103,7 @@ impl ProxyHttp for LB {
                                 }
                             }
                         }
-                        if let Some(rate) = innermap.rate_limit.or(_ctx.extraparams.rate_limit) {
+                        if let Some(rate) = innermap.rate_limit.or(ctx.extraparams.rate_limit) {
                             let rate_key = session.client_addr().and_then(|addr| addr.as_inet()).map(|inet| inet.ip());
                             let curr_window_requests = RATE_LIMITER.observe(&rate_key, 1);
                             if curr_window_requests > rate {
@@ -123,10 +127,10 @@ impl ProxyHttp for LB {
                             return Ok(true);
                         }
 
-                        if _ctx.extraparams.to_https.unwrap_or(false) || innermap.to_https {
+                        if ctx.extraparams.to_https.unwrap_or(false) || innermap.to_https {
                             if let Some(stream) = session.stream() {
                                 if stream.get_ssl().is_none() {
-                                    if let Some(host) = _ctx.hostname.as_ref() {
+                                    if let Some(host) = ctx.hostname.as_ref() {
                                         let port = self.config.proxy_port_tls.as_deref().unwrap_or("443");
                                         let uri = session.req_header().uri.path();
                                         let capacity = host.len() + uri.len() + 8;
@@ -149,7 +153,6 @@ impl ProxyHttp for LB {
                         }
                     }
                 }
-                _ctx.upstream_peer = optioninnermap;
             }
         }
         Ok(false)
@@ -308,7 +311,7 @@ impl ProxyHttp for LB {
                 }
             }
         }
-        access_log(response_code, &self.request_summary(session, ctx), session);
+        access_log(response_code, &self.request_summary(session, ctx), session, ctx);
     }
 }
 

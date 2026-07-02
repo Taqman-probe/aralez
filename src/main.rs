@@ -1,3 +1,4 @@
+mod default;
 mod tls;
 mod utils;
 mod web;
@@ -9,6 +10,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 fn main() {
     if std::env::args().any(|a| a == "--version" || a == "-v") {
         println!("aralez {}", env!("CARGO_PKG_VERSION"));
+        println!("features: [{}]", env!("ENABLED_FEATURES"));
         std::process::exit(0);
     }
 

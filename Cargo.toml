@@ -14,7 +14,13 @@ codegen-units = 1
 panic = "abort"
 strip = true
 
-[dependencies]
+[workspace]
+members = [
+  "default_interface",
+  "custom_logger"
+]
+
+[workspace.dependencies]
 tokio = { version = "1.52.3", features = ["full"] }
 pingora = { version = "0.8.1", features = ["lb", "openssl"] } # openssl, rustls, boringssl
 pingora-core = "0.8.1"
@@ -27,7 +33,7 @@ log = "0.4.30"
 notify = "9.0.0-rc.4"
 axum = { version = "0.8.9" }
 reqwest = { version = "0.13.4", features = ["json", "stream", "blocking"] }
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive", "rc"] }
 noyalib = { version = "0.0.8", features = ["compat-serde-yaml"] }
 rand = "0.10.1"
 base64 = "0.22.1"
@@ -53,3 +59,54 @@ mimalloc = { version = "0.1.52", default-features = false }
 signal-hook = "0.4.4"
 sd-notify = "0.5.0"
 libc = "0.2.186"
+http = "1.4.2"
+
+[dependencies]
+custom-logger = { path = "custom_logger", optional = true }
+custom-access-log = { path = "custom_access_log", optional = true }
+default-interface = { path = "default_interface"}
+ahash = { workspace = true }
+arc-swap = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true }
+base16ct = { workspace = true }
+base64 = { workspace = true }
+dashmap = { workspace = true }
+http = { workspace = true }
+instant-acme = { workspace = true }
+jsonwebtoken = { workspace = true }
+libc = { workspace = true }
+log = { workspace = true }
+log4rs = { workspace = true }
+mimalloc = { workspace = true }
+moka = { workspace = true }
+notify = { workspace = true }
+noyalib = { workspace = true }
+pingora = { workspace = true }
+pingora-core = { workspace = true }
+pingora-http = { workspace = true }
+pingora-limits = { workspace = true }
+pingora-proxy = { workspace = true }
+privdrop = { workspace = true }
+prometheus = { workspace = true }
+rand = { workspace = true }
+rcgen = { workspace = true }
+reqwest = { workspace = true }
+rustls-pemfile = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sd-notify = { workspace = true }
+sha2 = { workspace = true }
+signal-hook = { workspace = true }
+subtle = { workspace = true }
+tokio = { workspace = true }
+tonic = { workspace = true }
+tower-http = { workspace = true }
+urlencoding = { workspace = true }
+x509-parser = { workspace = true }
+
+[features]
+custom-access-log = ["dep:custom-access-log"]
+custom-logger = ["dep:custom-logger"]
+default = []
+full = ["custom-access-log", "custom-logger"]
