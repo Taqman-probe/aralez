@@ -1,6 +1,6 @@
 [package]
 name = "aralez"
-version = "0.92.13"
+version = "0.92.14"
 edition = "2021"
 license = "Apache-2.0"
 description = "Reverse proxy built on top of Cloudflare's Pingora"
@@ -48,8 +48,6 @@ moka = { version = "0.12.15", features = ["sync"] }
 ahash = "0.8.12"
 instant-acme = "0.8.5"
 rcgen = "0.14.8"
-#log4rs = "1.4.0"
-#log4rs = { version = "1.4.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
 log4rs = { version = "1.4.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller", "gzip"] }
 mimalloc = { version = "0.1.52", default-features = false }
 signal-hook = "0.4.4"
