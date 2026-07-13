@@ -3,14 +3,9 @@ use crate::utils::lazylock::REVERSE_STORE;
 use crate::utils::state::{is_first_run, mark_not_first_run};
 use crate::utils::structs::*;
 use crate::utils::tools::{clone_dashmap, clone_dashmap_into, print_upstreams};
+use crate::web::logging::log_builder;
 use dashmap::DashMap;
-use log::LevelFilter;
 use log::{error, info, warn};
-use log4rs::{
-    append::{console::ConsoleAppender, file::FileAppender},
-    config::{Appender, Config as Log4rsConfig, Root},
-    encode::pattern::PatternEncoder,
-};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
@@ -325,37 +320,5 @@ pub fn build_headers(path_config: &Option<Vec<String>>, _config: &Configuration,
                 hl.push((key.trim().to_string(), Arc::from(val.trim())));
             }
         }
-    }
-}
-
-fn log_builder(conf: &AppConfig, location: &Option<String>) {
-    let log_level = match conf.log_level.as_str() {
-        "info" => LevelFilter::Info,
-        "error" => LevelFilter::Error,
-        "warn" => LevelFilter::Warn,
-        "debug" => LevelFilter::Debug,
-        "trace" => LevelFilter::Trace,
-        "off" => LevelFilter::Off,
-        _ => {
-            println!("Error reading log level, defaulting to: INFO");
-            LevelFilter::Info
-        }
-    };
-    // let pattern = "{d(%Y-%m-%d %H:%M:%S)} {l} {t} - {m}{n}";
-    let pattern = "{d(%Y-%m-%d %H:%M:%S)} {l} {t} - {m}\n";
-    if let Some(location) = location {
-        let file = FileAppender::builder().encoder(Box::new(PatternEncoder::new(pattern))).build(location).unwrap();
-        let config = Log4rsConfig::builder()
-            .appender(Appender::builder().build("file", Box::new(file)))
-            .build(Root::builder().appender("file").build(log_level))
-            .unwrap();
-        log4rs::init_config(config).unwrap();
-    } else {
-        let stdout = ConsoleAppender::builder().encoder(Box::new(PatternEncoder::new(pattern))).build();
-        let config = Log4rsConfig::builder()
-            .appender(Appender::builder().build("stdout", Box::new(stdout)))
-            .build(Root::builder().appender("stdout").build(log_level))
-            .unwrap();
-        log4rs::init_config(config).unwrap();
     }
 }
