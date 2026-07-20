@@ -22,4 +22,6 @@ hc_interval: 2 #Interval for health checks in seconds
 tcp_keepalive_idle: 60 # Seconds of inactivity before the kernel starts sending keepalive probes to a downstream client
 tcp_keepalive_interval: 10 # Seconds between individual keepalive probes if the client does not respond
 tcp_keepalive_count: 5 # Number of unanswered probes before the kernel declares the connection dead and closes it
+cache_size_mb: 50 # Optional. Enable internal cache with size in megabytes of value. Cache is entirely disabled when this line is commented out
+cache_ttl: 120 # Optional. Set Default TTL in seconds for cached items, works if cache control headers are not set via upstream. Defaults to 60 if cache_size_mb is set
 
