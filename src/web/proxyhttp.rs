@@ -76,7 +76,7 @@ impl ProxyHttp for LB {
         let cc = CacheControl::from_resp_headers(resp);
         let defaults = CacheMetaDefaults::new(
             |status| {
-                if status.as_u16() == 200 {
+                if status == StatusCode::OK {
                     Some(Duration::from_secs(*CACHE_TTL.get().unwrap_or(&60)))
                 } else {
                     None

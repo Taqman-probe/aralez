@@ -82,6 +82,8 @@ Built on Rust, on top of **Cloudflare’s Pingora engine**, **Aralez** delivers 
 | **file_server_folder**           | /some/local/folder               | Optional. Local folder to serve                                                                                                                                       |
 | **file_server_address**          | 127.0.0.1:3002                   | Optional. Local address for file server                                                                                                                               |
 | **config_api_enabled**           | true                             | Enable/disable remote config push capability                                                                                                                          |
+| **cache_size_mb**                | 50                               | Optional. Enable internal cache with size in megabytes of value. Cache is entirely disabled when this line is commented out.                                          |
+| **cache_ttl**                    | 10                               | Optional. Set Default TTL in seconds for cached items, works if cache control headers are not set via upstream. Defaults to 60 if cache_size_mb is set.               |
 
 ---
 
