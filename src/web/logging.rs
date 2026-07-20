@@ -10,6 +10,7 @@ use log4rs::{
     config::{Appender, Config as Log4rsConfig, Root},
     encode::pattern::PatternEncoder,
 };
+use pingora_cache::CachePhase;
 use pingora_http::Version;
 use pingora_proxy::Session;
 use std::net::{IpAddr, Ipv4Addr};
@@ -23,6 +24,7 @@ pub struct LogMessage {
     pub client_ip: IpAddr,
     pub version: Version,
     pub user_agent: String,
+    pub cache_status: CachePhase,
 }
 static LOG_SENDER: OnceLock<mpsc::Sender<LogMessage>> = OnceLock::new();
 static ACCESS_LOG: OnceLock<LogLevel> = OnceLock::new();
@@ -126,13 +128,19 @@ pub fn access_log(response_code: u16, summary: &str, session: &Session) {
         .unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
 
     let user_agent = session.req_header().headers.get("user-agent").and_then(|v| v.to_str().ok()).unwrap_or("-");
-
+    // let cache_status = match session.cache.phase() {
+    //     CachePhase::Hit => "Hit",
+    //     CachePhase::Miss => "Miss",
+    //     CachePhase::Expired => "Expired",
+    //     _ => "Disabled",
+    // };
     let log = LogMessage {
         response_code,
         summary: summary.to_owned(),
         client_ip: ip,
         version: session.req_header().version,
         user_agent: user_agent.to_owned(),
+        cache_status: session.cache.phase(),
     };
 
     if let Some(sender) = LOG_SENDER.get() {
@@ -156,8 +164,13 @@ pub fn init_logging(enabled: Option<String>) {
 pub fn log_receiver(mut receiver: mpsc::Receiver<LogMessage>) {
     while let Some(msg) = receiver.blocking_recv() {
         info!(
-            "{}, {}, client: {}, version: {:?}, useragent: {}",
-            msg.response_code, msg.summary, msg.client_ip, msg.version, msg.user_agent,
+            "{}, {}, {}, client: {}, version: {:?}, useragent: {}",
+            msg.response_code,
+            msg.cache_status.as_str(),
+            msg.summary,
+            msg.client_ip,
+            msg.version,
+            msg.user_agent,
         );
     }
 }

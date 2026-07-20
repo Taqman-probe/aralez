@@ -21,6 +21,7 @@ pingora-core = "0.8.1"
 pingora-proxy = "0.8.1"
 pingora-http = "0.8.1"
 pingora-limits = "0.8.1"
+pingora-cache = "0.8.1"
 dashmap = "7.0.0-rc2"
 async-trait = "0.1.89"
 log = "0.4.33"
@@ -53,3 +54,4 @@ mimalloc = { version = "0.1.52", default-features = false }
 signal-hook = "0.4.4"
 sd-notify = "0.5.0"
 libc = "0.2.186"
+

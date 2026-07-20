@@ -146,6 +146,7 @@ dependencies = [
  "notify",
  "noyalib",
  "pingora",
+ "pingora-cache",
  "pingora-core",
  "pingora-http",
  "pingora-limits",
