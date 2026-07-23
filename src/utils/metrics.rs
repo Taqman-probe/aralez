@@ -1,3 +1,5 @@
+use crate::utils::lazylock::EVICTION;
+use pingora_cache::eviction::EvictionManager;
 use pingora_http::Method;
 use pingora_http::StatusCode;
 use pingora_http::Version;
@@ -20,6 +22,11 @@ pub static MEMORY_USAGE: LazyLock<IntGauge> = LazyLock::new(|| register_int_gaug
 pub static ACTIVE_SESSIONS: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_active_sessions", "Current number of active sessions").unwrap());
 pub static REQUEST_COUNT: LazyLock<IntCounter> = LazyLock::new(|| register_int_counter!("aralez_requests_total", "Total number of requests handled by Aralez").unwrap());
 
+pub static CACHE_SIZE_BYTES: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_cache_size_bytes", "Current cache size in bytes").unwrap());
+pub static CACHE_ITEMS: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_cache_items", "Current number of cached objects").unwrap());
+pub static CACHE_EVICTED_BYTES: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_cache_evicted_bytes_total", "Total bytes evicted from cache").unwrap());
+
+pub static CACHE_EVICTED_ITEMS: LazyLock<IntGauge> = LazyLock::new(|| register_int_gauge!("aralez_cache_evicted_items_total", "Total cache items evicted").unwrap());
 pub static RESPONSE_CODES: LazyLock<IntCounterVec> =
     LazyLock::new(|| register_int_counter_vec!("aralez_responses_total", "Responses grouped by status code", &["status"]).unwrap());
 
@@ -55,6 +62,13 @@ pub fn calc_metrics(metric_types: &MetricTypes) {
     REQUESTS_BY_METHOD.with_label_values(&[metric_types.method.as_str()]).inc();
     REQUESTS_BY_UPSTREAM.with_label_values(&[metric_types.upstream.as_ref()]).inc();
     RESPONSE_LATENCY.observe(metric_types.latency.as_secs_f64());
+
+    if let Some(eviction) = EVICTION.get() {
+        CACHE_SIZE_BYTES.set(eviction.total_size() as i64);
+        CACHE_ITEMS.set(eviction.total_items() as i64);
+        CACHE_EVICTED_BYTES.set(eviction.evicted_size() as i64);
+        CACHE_EVICTED_ITEMS.set(eviction.evicted_items() as i64);
+    }
 }
 
 #[cfg(unix)]

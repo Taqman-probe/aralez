@@ -1,5 +1,5 @@
 use crate::utils::auth::authenticate;
-use crate::utils::lazylock::{LOCALHOST, RATE_LIMITER, REQUESTS_4XX, REVERSE_STORE};
+use crate::utils::lazylock::{CACHE_LOCK, CACHE_TTL, EVICTION, LOCALHOST, MEM_CACHE, RATE_LIMITER, REQUESTS_4XX, REVERSE_STORE};
 use crate::utils::metrics::*;
 use crate::utils::structs::{AppConfig, Extraparams, Headers, InnerMap, UpstreamsDashMap, UpstreamsIdMap};
 use crate::web::gethosts::{GetHost, GetHostsReturHeaders};
@@ -7,9 +7,12 @@ use crate::web::logging::access_log;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use axum::body::Bytes;
-use pingora::http::{RequestHeader, ResponseHeader, StatusCode};
+use log::error;
+use pingora::http::{Method, RequestHeader, ResponseHeader, StatusCode};
 use pingora::prelude::*;
 use pingora::ErrorSource::Upstream;
+use pingora_cache::cache_control::CacheControl;
+use pingora_cache::{CacheKey, CacheMetaDefaults, RespCacheable};
 use pingora_core::listeners::ALPN;
 use pingora_core::prelude::HttpPeer;
 use pingora_proxy::{ProxyHttp, Session};
@@ -17,11 +20,10 @@ use sha2::{Digest, Sha256};
 use std::cell::RefCell;
 use std::fmt::Write;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::Instant;
-use log::{error};
 
 thread_local! {static IP_BUFFER: RefCell<String> = RefCell::new(String::with_capacity(50));}
-
 #[derive(Clone)]
 pub struct LB {
     pub ump_upst: Arc<UpstreamsDashMap>,
@@ -31,6 +33,7 @@ pub struct LB {
     pub server_headers: Arc<Headers>,
     pub config: Arc<AppConfig>,
     pub extraparams: Arc<ArcSwap<Extraparams>>,
+    pub cache_enabled: bool,
 }
 
 pub struct Context {
@@ -57,6 +60,34 @@ impl ProxyHttp for LB {
             x4xx_limit: None,
         }
     }
+
+    fn cache_key_callback(&self, session: &Session, _ctx: &mut Self::CTX) -> Result<CacheKey> {
+        Ok(CacheKey::new(_ctx.hostname.clone().unwrap_or_default().as_ref(), session.req_header().uri.to_string(), ""))
+    }
+    fn request_cache_filter(&self, session: &mut Session, _ctx: &mut Self::CTX) -> Result<()> {
+        if self.cache_enabled && session.req_header().method == Method::GET {
+            if let Some(eviction) = EVICTION.get() {
+                session.cache.enable(&*MEM_CACHE, Some(eviction), None, Some(&*CACHE_LOCK), None);
+            }
+        }
+        Ok(())
+    }
+    fn response_cache_filter(&self, _session: &Session, resp: &ResponseHeader, _ctx: &mut Self::CTX) -> Result<RespCacheable> {
+        let cc = CacheControl::from_resp_headers(resp);
+        let defaults = CacheMetaDefaults::new(
+            |status| {
+                if status == StatusCode::OK {
+                    Some(Duration::from_secs(*CACHE_TTL.get().unwrap_or(&60)))
+                } else {
+                    None
+                }
+            },
+            0,
+            0,
+        );
+        Ok(pingora_cache::filters::resp_cacheable(cc.as_ref(), resp.clone(), false, &defaults))
+    }
+
     async fn request_filter(&self, session: &mut Session, _ctx: &mut Self::CTX) -> Result<bool> {
         ACTIVE_SESSIONS.inc();
         let hostname = return_header_host_from_upstream(session, &self.ump_upst);
@@ -159,7 +190,6 @@ impl ProxyHttp for LB {
             Some(hostname) => match ctx.upstream_peer.as_ref() {
                 Some(innermap) => {
                     let mut peer = Box::new(HttpPeer::new((&*innermap.address, innermap.port), innermap.is_ssl, hostname.to_string()));
-
                     if innermap.is_http2 {
                         peer.options.alpn = ALPN::H2;
                     }
@@ -308,6 +338,13 @@ impl ProxyHttp for LB {
                 }
             }
         }
+        // match session.cache.phase() {
+        //     CachePhase::Hit => info!("Cache Status: HIT (Served from Memory)"),
+        //     CachePhase::Miss => info!("Cache Status: MISS (Fetched from Upstream)"),
+        //     CachePhase::Expired => info!("Cache Status: EXPIRED (Revalidating)"),
+        //     _ => {}
+        // }
+
         access_log(response_code, &self.request_summary(session, ctx), session);
     }
 }

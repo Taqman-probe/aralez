@@ -1,20 +1,17 @@
 // use rustls::crypto::ring::default_provider;
-#[cfg(not(feature = "custom-logger"))]
-use crate::default::logger as default_logger;
 use crate::tls::grades;
 use crate::tls::load;
 use crate::tls::load::CertificateConfig;
+use crate::utils::lazylock::{CACHE_TTL, EVICTION};
 use crate::utils::structs::Extraparams;
 use crate::utils::tools::*;
 use crate::web::logging::init_access_log;
 use crate::web::proxyhttp::LB;
-#[cfg(feature = "custom-logger")]
-use custom_logger;
-use default_interface::LoggerModule;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use log::info;
 use pingora::tls::ssl::{SslAlert, SslRef};
+use pingora_cache::eviction::simple_lru::Manager;
 use pingora_core::listeners::tls::TlsSettings;
 use pingora_core::listeners::TcpSocketOptions;
 use pingora_core::prelude::{background_service, Opt};
@@ -42,14 +39,12 @@ pub fn run() {
     let file = parameters.conf.clone().unwrap();
     let maincfg = crate::utils::parceyaml::parce_main_config(file.as_str());
 
-    #[cfg(not(feature = "custom-logger"))]
-    let _log_handle = default_logger::ApplicationLogger::new(&maincfg.log_level, maincfg.log_file.clone(), maincfg.log_config.clone())
-        .init();
-    #[cfg(feature = "custom-logger")]
-    let _log_handle = custom_logger::ApplicationLogger::new(&maincfg.log_level, maincfg.log_file.clone(), maincfg.log_config.clone())
-        .init();
-
-    info!("features: [{}]", env!("ENABLED_FEATURES"));
+    let cache_enabled = maincfg.cache_size_mb.is_some();
+    CACHE_TTL.set(maincfg.cache_ttl.unwrap_or(60)).unwrap();
+    if let Some(size) = maincfg.cache_size_mb {
+        let cache_size = size * 1024 * 1024;
+        drop(EVICTION.set(Manager::new(cache_size)));
+    }
 
     let mut server = Server::new(parameters).unwrap();
     server.bootstrap();
@@ -78,6 +73,7 @@ pub fn run() {
         client_headers: ch_config,
         server_headers: sh_config,
         extraparams: ec_config,
+        cache_enabled: cache_enabled,
     };
     let al = cfg.access_log.clone().unwrap_or("none".to_string());
     init_access_log(al.as_str());

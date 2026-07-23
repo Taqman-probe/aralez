@@ -60,28 +60,30 @@ Built on Rust, on top of **Cloudflare’s Pingora engine**, **Aralez** delivers 
 
 ### `main.yaml`
 
-| Key                              | Example Value              | Description                                                                                     |
-|----------------------------------|----------------------------|-------------------------------------------------------------------------------------------------|
-| **threads**                      | 12                         | Number of running daemon threads. Optional, defaults to 1                                       |
-| **runuser**                      | aralez                     | Optional. Username for running aralez after dropping root privileges (requires launch as root)  |
-| **rungroup**                     | aralez                     | Optional. Group for running aralez after dropping root privileges (requires launch as root)     |
-| **daemon**                       | false                      | Run in background (boolean)                                                                     |
-| **upstream_keepalive_pool_size** | 500                        | Pool size for upstream keepalive connections                                                    |
-| **pid_file**                     | /tmp/aralez.pid            | Path to PID file                                                                                |
-| **config_address**               | 0.0.0.0:3000               | HTTP API address for pushing upstreams.yaml from remote location                                |
-| **proxy_tls_grade**              | high, medium, unsafe       | Grade of TLS ciphers. `high` matches Qualys SSL Labs A+ (defaults to `medium`)                  |
-| **proxy_address_http**           | 0.0.0.0:6193               | Aralez HTTP bind address                                                                        |
-| **proxy_address_tls**            | 0.0.0.0:6194               | Aralez HTTPS bind address (Optional)                                                            |
-| **proxy_configs**                | /etc/aralez/               | Direcotry containing configuration files, must be writeable by user  `aralez`                   |
-| **upstreams_conf**               | /etc/aralez/upstreams.yaml | Location of the upstreams file                                                                  |
-| **access_log**                   | access                     | Configure access logging. Values: `access, error`                                               |
-| **log_level**                    | info                       | Log level: `info`, `warn`, `error`, `debug`, `trace`, `off`                                     |
-| **log_file**                     | /full/path/to/aralez.log   | Optional, the location of log file. If thi entry does not exist logs will be emitted to stdout. |
-| **hc_method**                    | HEAD                       | Healthcheck method: HEAD, GET, POST (UPPERCASE)                                                 |
-| **hc_interval**                  | 2                          | Interval for health checks in seconds                                                           |
-| **file_server_folder**           | /some/local/folder         | Optional. Local folder to serve                                                                 |
-| **file_server_address**          | 127.0.0.1:3002             | Optional. Local address for file server                                                         |
-| **config_api_enabled**           | true                       | Enable/disable remote config push capability                                                    |
+| Key                              | Example Value                    | Description                                                                                                                                                           |
+|----------------------------------|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **threads**                      | 12                               | Number of running daemon threads. Optional, defaults to 1                                                                                                             |
+| **runuser**                      | aralez                           | Optional. Username for running aralez after dropping root privileges (requires launch as root)                                                                        |
+| **rungroup**                     | aralez                           | Optional. Group for running aralez after dropping root privileges (requires launch as root)                                                                           |
+| **daemon**                       | false                            | Run in background (boolean)                                                                                                                                           |
+| **upstream_keepalive_pool_size** | 500                              | Pool size for upstream keepalive connections                                                                                                                          |
+| **pid_file**                     | /tmp/aralez.pid                  | Path to PID file                                                                                                                                                      |
+| **config_address**               | 0.0.0.0:3000                     | HTTP API address for pushing upstreams.yaml from remote location                                                                                                      |
+| **proxy_tls_grade**              | high, medium, unsafe             | Grade of TLS ciphers. `high` matches Qualys SSL Labs A+ (defaults to `medium`)                                                                                        |
+| **proxy_address_http**           | 0.0.0.0:6193                     | Aralez HTTP bind address                                                                                                                                              |
+| **proxy_address_tls**            | 0.0.0.0:6194                     | Aralez HTTPS bind address (Optional)                                                                                                                                  |
+| **proxy_configs**                | /etc/aralez/                     | Direcotry containing configuration files, must be writeable by user  `aralez`                                                                                         |
+| **upstreams_conf**               | /etc/aralez/upstreams.yaml       | Location of the upstreams file                                                                                                                                        |
+| **access_log**                   | access                           | Configure access logging. Values: `access, error`                                                                                                                     |
+| **log_level**                    | info                             | Log level: `info`, `warn`, `error`, `debug`, `trace`, `off`                                                                                                           |
+| **log_file**                     | /tmp/aralez.log, 20, 5, compress | Optional, the location of log file, file size in megabytes, number of log files to keep, compress files .valueas are separated by comma. Defaults to None, 100, 5, No |
+| **hc_method**                    | HEAD                             | Healthcheck method: HEAD, GET, POST (UPPERCASE)                                                                                                                       |
+| **hc_interval**                  | 2                                | Interval for health checks in seconds                                                                                                                                 |
+| **file_server_folder**           | /some/local/folder               | Optional. Local folder to serve                                                                                                                                       |
+| **file_server_address**          | 127.0.0.1:3002                   | Optional. Local address for file server                                                                                                                               |
+| **config_api_enabled**           | true                             | Enable/disable remote config push capability                                                                                                                          |
+| **cache_size_mb**                | 50                               | Optional. Enable internal cache with size in megabytes of value. Cache is entirely disabled when this line is commented out.                                          |
+| **cache_ttl**                    | 10                               | Optional. Set Default TTL in seconds for cached items, works if cache control headers are not set via upstream. Defaults to 60 if cache_size_mb is set.               |
 
 ---
 

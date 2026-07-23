@@ -1,7 +1,11 @@
 use dashmap::DashMap;
 use moka::sync::Cache;
+use pingora_cache::eviction::simple_lru::Manager;
+use pingora_cache::lock::CacheLock;
+use pingora_cache::MemCache;
 use pingora_limits::rate::Rate;
 use std::net::IpAddr;
+use std::sync::OnceLock;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
@@ -9,3 +13,7 @@ pub static REVERSE_STORE: LazyLock<DashMap<String, String>> = LazyLock::new(Dash
 pub static RATE_LIMITER: LazyLock<Rate> = LazyLock::new(|| Rate::new(Duration::from_secs(1)));
 pub static REQUESTS_4XX: LazyLock<Cache<IpAddr, u32>> = LazyLock::new(|| Cache::builder().time_to_live(Duration::from_secs(1)).build());
 pub static LOCALHOST: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("localhost"));
+pub static MEM_CACHE: LazyLock<MemCache> = LazyLock::new(MemCache::new);
+pub static CACHE_LOCK: LazyLock<CacheLock> = LazyLock::new(|| CacheLock::new(Duration::from_secs(30)));
+pub static EVICTION: OnceLock<Manager> = OnceLock::new();
+pub static CACHE_TTL: OnceLock<u64> = OnceLock::new();

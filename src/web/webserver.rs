@@ -71,8 +71,18 @@ pub async fn run_server(config: &APIUpstreamProvider, mut to_return: mpsc::Sende
         let static_listen = port_is_available("File Server", &address).await;
         let static_files = ServeDir::new(folder);
         let static_serve: Router = Router::new().fallback_service(static_files);
-        // drop(tokio::spawn(async move { axum::serve(static_listen, static_serve).await.unwrap() }));
-        static_handle = Some(tokio::spawn(async move { axum::serve(static_listen, static_serve).await.unwrap() }))
+        info!("Starting file server on: {}", address);
+
+        static_handle = Some(tokio::spawn(async move {
+            match axum::serve(static_listen, static_serve).await {
+                Ok(o) => info!("File server exited normally: {:?}", o),
+                Err(e) => error!("File server exited: {}", e),
+            }
+        }))
+
+        // let a = config.file_server_address.to_owned();
+        // let f = config.file_server_folder.to_owned();
+        // drop(tokio::spawn(async move { run_file_server(a, f).await }));
     }
 
     let listener = port_is_available("Config API", &config.address).await;
