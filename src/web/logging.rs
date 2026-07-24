@@ -1,6 +1,8 @@
-use crate::utils::structs::AppConfig;
 use crate::utils::metrics::LOGGING_ERRORS;
-use aralez_spec::{AralezPluginLogger, LogMessage as PluginLogMessage};
+use crate::utils::structs::AppConfig;
+use aralez_spec::{
+    AralezPluginLogger, LoggerPluginEntry, LogMessage as PluginLogMessage,
+};
 use log::info;
 use pingora_cache::CachePhase;
 use pingora_http::Version;
@@ -17,25 +19,20 @@ const LOG_BUFFER: usize = 16384;
 pub fn log_builder(
     conf: &AppConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let plugin = build_logger_plugin(conf)?;
+
     LOGGING_ERRORS.set(0);
-    info!("Enabling {:?} log, with buffer of {} messages", conf.access_log, LOG_BUFFER);
+
+    info!(
+        "Enabling {:?} log, with buffer of {} messages",
+        conf.access_log, LOG_BUFFER
+    );
+
     let (ltx, lrx) = mpsc::channel(LOG_BUFFER);
 
     LOG_SENDER
         .set(ltx)
         .map_err(|_| "access log sender is already initialized")?;
-
-    let logger_option = conf
-        .options
-        .as_ref()
-        .and_then(|o| o.logger.clone());
-
-    let plugin = aralez_plugin_logger::create_logger_plugin(
-        conf.log_level.as_str(),
-        conf.log_file.clone(),
-        conf.access_log.clone().unwrap_or_else(|| "none".to_string()).as_str(),
-        logger_option,
-    ).unwrap();
 
     let worker_plugin = plugin.clone();
     std::thread::spawn(move || access_log_worker(worker_plugin, lrx));
@@ -45,6 +42,37 @@ pub fn log_builder(
         .map_err(|_| "logger plugin is already initialized")?;
 
     Ok(())
+}
+
+fn build_logger_plugin(
+    conf: &AppConfig,
+) -> Result<Arc<dyn AralezPluginLogger>, Box<dyn std::error::Error>> {
+    let mut iter = inventory::iter::<LoggerPluginEntry>.into_iter();
+
+    let Some(registration) = iter.next() else {
+        return Err("no logger plugin is registered".into());
+    };
+
+    if iter.next().is_some() {
+        return Err("multiple logger plugins are registered".into());
+    }
+
+    let logger_option = conf
+        .options
+        .as_ref()
+        .and_then(|o| o.logger.clone());
+
+    let access_level = conf
+        .access_log
+        .clone()
+        .unwrap_or_else(|| "none".to_string());
+
+    (registration.create)(
+        conf.log_level.as_str(),
+        conf.log_file.clone(),
+        access_level.as_str(),
+        logger_option,
+    )
 }
 
 fn access_log_worker(

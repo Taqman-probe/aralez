@@ -1,4 +1,4 @@
-use aralez_spec::{AralezPluginLogger, LogMessage};
+use aralez_spec::{AralezPluginLogger, LogMessage, LoggerPluginEntry};
 use log::{info, LevelFilter};
 use log4rs::{
     append::{
@@ -109,7 +109,7 @@ impl LoggerPlugin {
                 .appender(Appender::builder().build("stdout", Box::new(stdout)))
                 .build(Root::builder().appender("stdout").build(level_filter))?;
 
-            log4rs::init_config(config)?;
+            log4rs::init_config(config).unwrap();
 
             info!("No files are configured, logging to stdout");
         }
@@ -118,7 +118,7 @@ impl LoggerPlugin {
     }
 }
 
-pub fn create_logger_plugin(
+fn create_logger_plugin(
     log_level: &str,
     file_location: Option<String>,
     access_level: &str,
@@ -153,5 +153,11 @@ impl AralezPluginLogger for LoggerPlugin {
             msg.version,
             msg.user_agent,
         )
+    }
+}
+
+inventory::submit! {
+    LoggerPluginEntry {
+        create: create_logger_plugin,
     }
 }

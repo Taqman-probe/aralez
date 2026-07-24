@@ -29,3 +29,9 @@ pub type LoggerFactory = fn(
     access_level: &str,
     option: Option<noyalib::Value>,
 ) -> Result<Arc<dyn AralezPluginLogger>, Box<dyn std::error::Error>>;
+
+pub struct LoggerPluginEntry {
+    pub create: LoggerFactory,
+}
+
+inventory::collect!(LoggerPluginEntry);

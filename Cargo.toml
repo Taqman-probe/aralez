@@ -59,6 +59,7 @@ mimalloc = { version = "0.1.52", default-features = false }
 signal-hook = "0.4.4"
 sd-notify = "0.5.0"
 libc = "0.2.186"
+inventory = "0.3.24"
 
 [dependencies]
 aralez-spec = { workspace = true }
@@ -102,3 +103,4 @@ mimalloc = { workspace = true }
 signal-hook = { workspace = true }
 sd-notify = { workspace = true }
 libc = { workspace = true }
+inventory = { workspace = true }

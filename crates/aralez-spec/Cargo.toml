@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 async-trait = { workspace = true }
+inventory = { workspace = true }
 noyalib = { workspace = true }

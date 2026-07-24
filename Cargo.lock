@@ -139,6 +139,7 @@ dependencies = [
  "base64",
  "dashmap",
  "instant-acme",
+ "inventory",
  "jsonwebtoken",
  "libc",
  "log",
@@ -177,6 +178,7 @@ name = "aralez-plugin-logger"
 version = "0.92.15"
 dependencies = [
  "aralez-spec",
+ "inventory",
  "log",
  "log4rs",
  "noyalib",
@@ -189,6 +191,7 @@ name = "aralez-spec"
 version = "0.92.15"
 dependencies = [
  "async-trait",
+ "inventory",
  "noyalib",
 ]
 
@@ -1757,6 +1760,15 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
+]
+
+[[package]]
+name = "inventory"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4f0c30c76f2f4ccee3fe55a2435f691ca00c0e4bd87abe4f4a851b1d4dac39b"
+dependencies = [
+ "rustversion",
 ]
 
 [[package]]
