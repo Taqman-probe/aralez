@@ -1,0 +1,13 @@
+[package]
+name = "aralez-plugin-logger"
+version = "0.92.15"
+edition = "2021"
+
+[dependencies]
+aralez-spec = { path = "../aralez-spec" }
+
+log = { workspace = true }
+log4rs = { workspace = true }
+noyalib = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }

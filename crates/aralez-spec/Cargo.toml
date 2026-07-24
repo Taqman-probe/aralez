@@ -1,0 +1,8 @@
+[package]
+name = "aralez-spec"
+version = "0.92.15"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+noyalib = { workspace = true }

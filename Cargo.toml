@@ -14,7 +14,12 @@ codegen-units = 1
 panic = "abort"
 strip = true
 
-[dependencies]
+members = ["crates/*"]
+
+[workspace.dependencies]
+aralez-spec = { path = "crates/aralez-spec" }
+aralez-plugin-logger = { path = "crates/aralez-plugin-logger" }
+
 tokio = { version = "1.52.3", features = ["full"] }
 pingora = { version = "0.8.1", features = ["lb", "openssl"] } # openssl, rustls, boringssl
 pingora-core = "0.8.1"
@@ -55,3 +60,45 @@ signal-hook = "0.4.4"
 sd-notify = "0.5.0"
 libc = "0.2.186"
 
+[dependencies]
+aralez-spec = { workspace = true }
+aralez-plugin-logger = { workspace = true }
+tokio = { workspace = true }
+pingora = { workspace = true }
+pingora-core = { workspace = true }
+pingora-proxy = { workspace = true }
+pingora-http = { workspace = true }
+pingora-limits = { workspace = true }
+pingora-cache = { workspace = true }
+dashmap = { workspace = true }
+async-trait = { workspace = true }
+log = { workspace = true }
+notify = { workspace = true }
+axum = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+noyalib = { workspace = true }
+rand = { workspace = true }
+base64 = { workspace = true }
+jsonwebtoken = { workspace = true }
+tonic = { workspace = true }
+sha2 = { workspace = true }
+base16ct = { workspace = true }
+urlencoding = { workspace = true }
+arc-swap = { workspace = true }
+prometheus = { workspace = true }
+x509-parser = { workspace = true }
+rustls-pemfile = { workspace = true }
+tower-http = { workspace = true }
+privdrop = { workspace = true }
+serde_json = { workspace = true }
+subtle = { workspace = true }
+moka = { workspace = true }
+ahash = { workspace = true }
+instant-acme = { workspace = true }
+rcgen = { workspace = true }
+log4rs = { workspace = true }
+mimalloc = { workspace = true }
+signal-hook = { workspace = true }
+sd-notify = { workspace = true }
+libc = { workspace = true }

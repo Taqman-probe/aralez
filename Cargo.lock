@@ -130,6 +130,8 @@ name = "aralez"
 version = "0.92.15"
 dependencies = [
  "ahash",
+ "aralez-plugin-logger",
+ "aralez-spec",
  "arc-swap",
  "async-trait",
  "axum",
@@ -168,6 +170,26 @@ dependencies = [
  "tower-http 0.7.0",
  "urlencoding",
  "x509-parser",
+]
+
+[[package]]
+name = "aralez-plugin-logger"
+version = "0.92.15"
+dependencies = [
+ "aralez-spec",
+ "log",
+ "log4rs",
+ "noyalib",
+ "serde",
+ "tokio",
+]
+
+[[package]]
+name = "aralez-spec"
+version = "0.92.15"
+dependencies = [
+ "async-trait",
+ "noyalib",
 ]
 
 [[package]]

@@ -265,7 +265,7 @@ pub fn parce_main_config(path: &str) -> AppConfig {
         cfo.master_key = Some(jwt_key);
     };
 
-    log_builder(&cfo, &cfo.log_file);
+    let _ = log_builder(&cfo);
     cfo.hc_method = cfo.hc_method.to_uppercase();
     if let Some((ip, port_str)) = cfo.config_address.rsplit_once(':') {
         if let Ok(port) = port_str.parse::<u16>() {

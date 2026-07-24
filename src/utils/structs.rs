@@ -135,6 +135,7 @@ pub struct AppConfig {
     pub tcp_keepalive_idle: Option<u64>,
     pub tcp_keepalive_interval: Option<u64>,
     pub tcp_keepalive_count: Option<usize>,
+    pub options: Option<OptionConfig>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -190,4 +191,9 @@ pub struct InnerMapForJson {
 pub struct UpstreamSnapshotForJson {
     pub backends: Vec<InnerMapForJson>,
     pub requests: usize,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct OptionConfig {
+    pub logger: Option<noyalib::Value> ,
 }
