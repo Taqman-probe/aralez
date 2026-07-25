@@ -7,3 +7,4 @@ edition = "2021"
 async-trait = { workspace = true }
 inventory = { workspace = true }
 noyalib = { workspace = true }
+serde = { workspace = true }

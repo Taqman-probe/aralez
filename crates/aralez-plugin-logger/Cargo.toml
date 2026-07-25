@@ -10,4 +10,3 @@ log = { workspace = true }
 log4rs = { workspace = true }
 noyalib = { workspace = true }
 serde = { workspace = true }
-tokio = { workspace = true }

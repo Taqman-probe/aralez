@@ -183,7 +183,6 @@ dependencies = [
  "log4rs",
  "noyalib",
  "serde",
- "tokio",
 ]
 
 [[package]]
@@ -193,6 +192,7 @@ dependencies = [
  "async-trait",
  "inventory",
  "noyalib",
+ "serde",
 ]
 
 [[package]]
