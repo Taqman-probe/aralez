@@ -1,5 +1,4 @@
 use crate::utils::discovery::APIUpstreamProvider;
-use crate::utils::jwt::Claims;
 use crate::utils::metrics::{get_memory_usage, get_open_files, MEMORY_USAGE, OPEN_FILES};
 use crate::utils::structs::{Config, Configuration, UpstreamsDashMap};
 use crate::utils::tools::{upstreams_liveness_json, upstreams_to_json};
@@ -23,6 +22,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tower_http::services::ServeDir;
+
+use aralez_spec::Claims;
 
 #[derive(Serialize, Debug)]
 struct OutToken {

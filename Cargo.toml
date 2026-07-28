@@ -19,6 +19,7 @@ members = ["crates/*"]
 
 [workspace.dependencies]
 aralez-spec = { path = "crates/aralez-spec" }
+aralez-plugin-auth = { path = "crates/aralez-plugin-auth" }
 aralez-plugin-logger = { path = "crates/aralez-plugin-logger" }
 
 tokio = { version = "1.52.3", features = ["full"] }

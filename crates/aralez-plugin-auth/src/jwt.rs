@@ -3,19 +3,13 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use moka::sync::Cache;
 use moka::Expiry;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use std::env;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant, SystemTime};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub master_key: String,
-    pub owner: String,
-    pub exp: u64,
-    pub random: Option<String>,
-}
+use aralez_spec::Claims;
 
 #[derive(Debug, Deserialize)]
 struct Expired {

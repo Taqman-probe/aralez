@@ -1,5 +1,7 @@
 use std::net::IpAddr;
 use std::sync::Arc;
+use pingora_proxy::Session;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LogMessage {
@@ -35,3 +37,25 @@ pub struct LoggerPluginEntry {
 }
 
 inventory::collect!(LoggerPluginEntry);
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub master_key: String,
+    pub owner: String,
+    pub exp: u64,
+    pub random: Option<String>,
+}
+
+#[async_trait::async_trait]
+pub trait AuthValidator: Send + Sync {
+    async fn validate(&self, session: &mut Session) -> bool;
+}
+
+pub type AuthFactory = fn(cred: Arc<str>) -> Box<dyn AuthValidator + Send + Sync>;
+
+pub struct AuthPluginEntry {
+    pub name: &'static str,
+    pub create: AuthFactory,
+}
+
+inventory::collect!(AuthPluginEntry);

@@ -4,7 +4,6 @@ mod filewatch;
 pub mod fordebug;
 pub mod healthcheck;
 pub mod httpclient;
-pub mod jwt;
 pub mod kuberconsul;
 pub mod lazylock;
 pub mod metrics;

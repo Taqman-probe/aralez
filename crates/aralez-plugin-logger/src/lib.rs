@@ -17,6 +17,9 @@ use log4rs::{
 };
 use std::sync::Arc;
 
+pub fn init() {
+}
+
 #[derive(Debug, Clone)]
 pub enum LogLevel {
     Access,
