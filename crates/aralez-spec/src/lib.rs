@@ -14,7 +14,7 @@ pub struct LogMessage {
     pub cache_status: String,
 }
 
-pub trait AralezPluginLogger: Send + Sync {
+pub trait AccessLogger: Send + Sync {
     fn pre_should_log(&self, _response_code: u16) -> bool {
         true
     }
@@ -31,7 +31,7 @@ pub type LoggerFactory = fn(
     file_location: Option<String>,
     access_level: &str,
     option: Option<noyalib::Value>,
-) -> Result<Arc<dyn AralezPluginLogger>, Box<dyn std::error::Error>>;
+) -> Result<Arc<dyn AccessLogger>, Box<dyn std::error::Error>>;
 
 pub struct LoggerPluginEntry {
     pub create: LoggerFactory,

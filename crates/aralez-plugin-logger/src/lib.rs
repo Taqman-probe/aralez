@@ -1,4 +1,4 @@
-use aralez_spec::{AralezPluginLogger, LogMessage, LoggerPluginEntry};
+use aralez_spec::{AccessLogger, LogMessage, LoggerPluginEntry};
 use log::{info, LevelFilter};
 use log4rs::{
     append::{
@@ -126,7 +126,7 @@ fn create_logger_plugin(
     file_location: Option<String>,
     access_level: &str,
     option: Option<noyalib::Value>,
-) -> Result<Arc<dyn AralezPluginLogger>, Box<dyn std::error::Error>> {
+) -> Result<Arc<dyn AccessLogger>, Box<dyn std::error::Error>> {
     let plugin = LoggerPlugin::initialize(
         log_level,
         file_location,
@@ -137,7 +137,7 @@ fn create_logger_plugin(
     Ok(Arc::new(plugin))
 }
 
-impl AralezPluginLogger for LoggerPlugin {
+impl AccessLogger for LoggerPlugin {
     fn pre_should_log(&self, response_code: u16) -> bool {
         match self.access_log_level {
             LogLevel::Access => true,

@@ -1,7 +1,7 @@
 use crate::utils::metrics::LOGGING_ERRORS;
 use crate::utils::structs::AppConfig;
 use aralez_spec::{
-    AralezPluginLogger, LoggerPluginEntry, LogMessage as PluginLogMessage,
+    AccessLogger, LoggerPluginEntry, LogMessage as PluginLogMessage,
 };
 use log::info;
 use pingora_cache::CachePhase;
@@ -11,7 +11,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, OnceLock};
 use tokio::sync::mpsc;
 
-static LOGGER: OnceLock<Arc<dyn AralezPluginLogger>> = OnceLock::new();
+static LOGGER: OnceLock<Arc<dyn AccessLogger>> = OnceLock::new();
 static LOG_SENDER: OnceLock<mpsc::Sender<PluginLogMessage>> = OnceLock::new();
 
 const LOG_BUFFER: usize = 16384;
@@ -46,7 +46,7 @@ pub fn log_builder(
 
 fn build_logger_plugin(
     conf: &AppConfig,
-) -> Result<Arc<dyn AralezPluginLogger>, Box<dyn std::error::Error>> {
+) -> Result<Arc<dyn AccessLogger>, Box<dyn std::error::Error>> {
     let mut iter = inventory::iter::<LoggerPluginEntry>.into_iter();
 
     let Some(registration) = iter.next() else {
@@ -76,7 +76,7 @@ fn build_logger_plugin(
 }
 
 fn access_log_worker(
-    plugin: Arc<dyn AralezPluginLogger>,
+    plugin: Arc<dyn AccessLogger>,
     mut receiver: mpsc::Receiver<PluginLogMessage>,
 ) {
     while let Some(msg) = receiver.blocking_recv() {
