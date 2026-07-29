@@ -1,6 +1,6 @@
 [package]
 name = "aralez-plugin-logger"
-version = "0.92.15"
+version.workspace = true
 edition = "2021"
 
 [dependencies]

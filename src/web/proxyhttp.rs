@@ -1,4 +1,3 @@
-use crate::utils::auth::authenticate;
 use crate::utils::lazylock::{CACHE_LOCK, CACHE_TTL, EVICTION, LOCALHOST, MEM_CACHE, RATE_LIMITER, REQUESTS_4XX, REVERSE_STORE};
 use crate::utils::metrics::*;
 use crate::utils::structs::{AppConfig, Extraparams, Headers, InnerMap, UpstreamsDashMap, UpstreamsIdMap};
@@ -112,8 +111,9 @@ impl ProxyHttp for LB {
                     None => return Ok(false),
                     Some(ref innermap) => {
                         if let Some(auth) = _ctx.extraparams.authentication.as_ref().or(innermap.authorization.as_ref()) {
-                            if !authenticate(&auth, session).await {
-                                let _ = session.respond_error(401).await;
+                            if let Err(resp) = auth.validator.validate(session).await {
+                                let _ = session.write_response_header(Box::new(resp), true).await;
+
                                 return Ok(true);
                             }
                         }

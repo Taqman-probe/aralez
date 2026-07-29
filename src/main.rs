@@ -1,7 +1,8 @@
 mod tls;
 mod utils;
 mod web;
-use aralez_plugin_logger as _;
+
+include!(concat!(env!("OUT_DIR"), "/generated_plugins.rs"));
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;

@@ -183,11 +183,16 @@ async fn populate_headers_and_auth(config: &mut Configuration, parsed: &Config) 
     }
 
     if let Some(pa) = &parsed.authorization {
-        let y: InnerAuth = InnerAuth {
-            auth_type: Arc::from(pa.auth_type.clone()),
-            auth_cred: Arc::from(pa.auth_cred.clone().unwrap_or_default()),
-        };
-        config.extraparams.authentication = Some(Arc::from(y));
+        match crate::utils::auth::create_validator(&pa.auth_type, pa.auth_cred.clone()) {
+            Ok(validator) => {
+                let y = InnerAuth {
+                    auth_type: Arc::from(pa.auth_type.as_str()),
+                    validator,
+                };
+                config.extraparams.authentication = Some(Arc::new(y)); //[cite: 8]
+            }
+            Err(e) => log::error!("Failed to init auth plugin {}: {}", pa.auth_type, e),
+        }
     }
 }
 
@@ -212,11 +217,16 @@ async fn populate_file_upstreams(config: &mut Configuration, parsed: &Config) {
                 for server in &path_config.servers {
                     let mut path_auth: Option<Arc<InnerAuth>> = None;
                     if let Some(pa) = &path_config.authorization {
-                        let y: InnerAuth = InnerAuth {
-                            auth_type: Arc::from(pa.auth_type.clone()),
-                            auth_cred: Arc::from(pa.auth_cred.clone().unwrap_or_default()),
-                        };
-                        path_auth = Some(Arc::from(y));
+                        match crate::utils::auth::create_validator(&pa.auth_type, pa.auth_cred.clone()) {
+                            Ok(validator) => {
+                                let y = InnerAuth {
+                                    auth_type: Arc::from(pa.auth_type.as_str()),
+                                    validator,
+                                };
+                                path_auth = Some(Arc::new(y)); //[cite: 8]
+                            }
+                            Err(e) => log::error!("Failed to init auth plugin {}: {}", pa.auth_type, e),
+                        }
                     }
 
                     let redirect_link = path_config.redirect_to.as_ref().map(|www| Arc::from(www.as_str()));

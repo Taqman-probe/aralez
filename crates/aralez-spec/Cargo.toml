@@ -1,11 +1,12 @@
 [package]
 name = "aralez-spec"
-version = "0.92.15"
+version.workspace = true
 edition = "2021"
 
 [dependencies]
 async-trait = { workspace = true }
 inventory = { workspace = true }
 noyalib = { workspace = true }
+pingora = { workspace = true }
 pingora-proxy = { workspace = true }
 serde = { workspace = true }

@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 
+use aralez_spec::AuthValidator;
+
 pub type UpstreamsDashMap = DashMap<Arc<str>, DashMap<Arc<str>, (Vec<Arc<InnerMap>>, AtomicUsize)>>;
 
 pub type UpstreamsIdMap = DashMap<String, Arc<InnerMap>>;
@@ -79,7 +81,7 @@ pub struct Auth {
     #[serde(rename = "type")]
     pub auth_type: String,
     #[serde(rename = "data")]
-    pub auth_cred: Option<String>,
+    pub auth_cred: Option<noyalib::Value>,
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PathConfig {
@@ -138,10 +140,29 @@ pub struct AppConfig {
     pub options: Option<OptionConfig>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct InnerAuth {
     pub auth_type: Arc<str>,
-    pub auth_cred: Arc<str>,
+    pub validator: Arc<dyn AuthValidator>,
+}
+
+// Since InnerMap requires PartialEq, Eq, and Hash,
+// a dummy implementation using pointer comparison is necessary.
+impl std::fmt::Debug for InnerAuth {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "InnerAuth {{ auth_type: {} }}", self.auth_type)
+    }
+}
+impl PartialEq for InnerAuth {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.validator, &other.validator)
+    }
+}
+impl Eq for InnerAuth {}
+impl std::hash::Hash for InnerAuth {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        Arc::as_ptr(&self.validator).hash(state);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

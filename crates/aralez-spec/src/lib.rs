@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 use std::sync::Arc;
+use pingora::http::ResponseHeader;
 use pingora_proxy::Session;
 use serde::{Deserialize, Serialize};
 
@@ -48,10 +49,10 @@ pub struct Claims {
 
 #[async_trait::async_trait]
 pub trait AuthValidator: Send + Sync {
-    async fn validate(&self, session: &mut Session) -> bool;
+    async fn validate(&self, session: &mut Session) -> Result<(), ResponseHeader>;
 }
 
-pub type AuthFactory = fn(cred: Arc<str>) -> Box<dyn AuthValidator + Send + Sync>;
+pub type AuthFactory = fn(data: Option<noyalib::Value>) -> Result<Arc<dyn AuthValidator>,  Box<dyn std::error::Error>>;
 
 pub struct AuthPluginEntry {
     pub name: &'static str,
