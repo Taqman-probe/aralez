@@ -133,6 +133,7 @@ dependencies = [
  "aralez-plugin-auth",
  "aralez-plugin-logger",
  "aralez-spec",
+ "aralez-util",
  "arc-swap",
  "async-trait",
  "axum",
@@ -186,6 +187,7 @@ version = "0.92.16"
 dependencies = [
  "ahash",
  "aralez-spec",
+ "aralez-util",
  "async-trait",
  "axum",
  "base64",
@@ -226,6 +228,24 @@ dependencies = [
  "pingora",
  "pingora-proxy",
  "serde",
+]
+
+[[package]]
+name = "aralez-util"
+version = "0.92.16"
+dependencies = [
+ "ahash",
+ "aralez-spec",
+ "axum",
+ "base64",
+ "jsonwebtoken",
+ "moka",
+ "pingora-core",
+ "pingora-http",
+ "pingora-proxy",
+ "serde",
+ "serde_json",
+ "urlencoding",
 ]
 
 [[package]]

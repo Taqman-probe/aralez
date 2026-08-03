@@ -25,6 +25,7 @@ version = "0.92.16"
 
 [workspace.dependencies]
 aralez-spec = { path = "crates/aralez-spec" }
+aralez-util = { path = "crates/aralez-util"}
 aralez-plugin-auth = { path = "crates/aralez-plugin-auth" }
 aralez-plugin-logger = { path = "crates/aralez-plugin-logger" }
 
@@ -75,6 +76,7 @@ bytes = "1.12.1"
 
 [dependencies]
 aralez-spec = { workspace = true }
+aralez-util = { workspace = true }
 aralez-plugin-logger = { workspace = true }
 aralez-plugin-auth = { workspace = true }
 

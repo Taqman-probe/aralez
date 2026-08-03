@@ -1,23 +1,16 @@
-pub mod jwt;
-
-use std::collections::HashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use axum::http::StatusCode;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use pingora::http::RequestHeader;
-use pingora_core::connectors::http::Connector;
 use pingora_core::upstreams::peer::HttpPeer;
 use pingora_http::ResponseHeader;
 use pingora_proxy::Session;
 use subtle::ConstantTimeEq;
-use urlencoding::decode;
 
 use aralez_spec::{AuthValidator, AuthPluginEntry};
-use jwt::{check_jwt, JWT_TOKEN};
-
-pub static AUTH_CONNECTOR: LazyLock<Connector> = LazyLock::new(|| Connector::new(None));
+use aralez_util::{build_error_resp, get_query_param, jwt::{check_jwt, JWT_TOKEN}, AUTH_CONNECTOR};
 
 fn create_auth_validator(method: &str, option: Option<noyalib::Value>)
 -> Result<Arc<dyn AuthValidator>, Box<dyn std::error::Error>> {
@@ -261,27 +254,6 @@ inventory::submit! {
 }
 
 // Helper
-fn build_error_resp(status: StatusCode) -> ResponseHeader {
-    let mut resp = ResponseHeader::build(status, None).unwrap();
-    resp.insert_header("Content-Length", "0").ok();
-    resp
-}
-
-pub fn get_query_param(session: &mut Session, key: &str) -> Option<String> {
-    let query = session.req_header().uri.query()?;
-
-    let params: HashMap<_, _> = query
-        .split('&')
-        .filter_map(|pair| {
-            let mut parts = pair.splitn(2, '=');
-            let k = parts.next()?;
-            let v = parts.next().unwrap_or("");
-            Some((k, v))
-        })
-        .collect();
-    params.get(key).and_then(|v| decode(v).ok()).map(|s| s.to_string())
-}
-
 #[allow(clippy::needless_return)]
 fn split_host_port(addr: &str, tls: bool) -> Option<(&str, u16, bool, &str)> {
     match addr.split_once(':') {

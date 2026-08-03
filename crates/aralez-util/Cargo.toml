@@ -1,26 +1,19 @@
 [package]
-name = "aralez-plugin-auth"
+name = "aralez-util"
 version.workspace = true
 edition = "2021"
 
 [dependencies]
 aralez-spec = { workspace = true }
-aralez-util = { workspace = true }
 
 ahash = { workspace = true }
-async-trait = { workspace = true }
 axum = { workspace = true }
 base64 = { workspace = true }
-inventory = { workspace = true }
 jsonwebtoken = { workspace = true }
-log = { workspace = true }
 moka = { workspace = true }
-noyalib = { workspace = true }
-pingora = { workspace = true }
 pingora-core = { workspace = true }
 pingora-http = { workspace = true }
 pingora-proxy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-subtle = { workspace = true }
 urlencoding = { workspace = true }

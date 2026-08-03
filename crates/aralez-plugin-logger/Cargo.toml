@@ -4,7 +4,7 @@ version.workspace = true
 edition = "2021"
 
 [dependencies]
-aralez-spec = { path = "../aralez-spec" }
+aralez-spec = { workspace = true }
 inventory = { workspace = true }
 log = { workspace = true }
 log4rs = { workspace = true }
