@@ -1,23 +1,21 @@
+use crate::utils::hcclient::httpclient;
 use crate::utils::lazylock::REVERSE_STORE;
 use crate::utils::structs::{InnerMap, UpstreamsDashMap, UpstreamsIdMap};
 use crate::utils::tools::*;
 use dashmap::DashMap;
-use log::{error, warn};
-use reqwest::{Client, Version};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::net::TcpStream;
 use tokio::time::interval;
-use tonic::transport::Endpoint;
+use tokio_native_tls::native_tls::TlsConnector;
 
 pub async fn hc2(upslist: Arc<UpstreamsDashMap>, fullist: Arc<UpstreamsDashMap>, idlist: Arc<UpstreamsIdMap>, params: (&str, u64)) {
     let mut period = interval(Duration::from_secs(params.1));
-    let client = Client::builder().timeout(Duration::from_secs(params.1)).danger_accept_invalid_certs(true).build().unwrap();
     loop {
         tokio::select! {
             _ = period.tick() => {
-                // populate_upstreams(&upslist, &fullist, &idlist, params, &client).await;
-                let totest = build_upstreams(&fullist, params.0, &client).await;
+                let totest = build_upstreams(&fullist, params.0).await;
                 if !compare_dashmaps(&totest, &upslist) {
                     clone_dashmap_into(&totest, &upslist);
                     clone_idmap_into(&totest, &idlist);
@@ -28,22 +26,11 @@ pub async fn hc2(upslist: Arc<UpstreamsDashMap>, fullist: Arc<UpstreamsDashMap>,
     }
 }
 
-/*
-pub async fn populate_upstreams(upslist: &Arc<UpstreamsDashMap>, fullist: &Arc<UpstreamsDashMap>, idlist: &Arc<UpstreamsIdMap>, params: (&str, u64), client: &Client) {
-    let totest = build_upstreams(fullist, params.0, client).await;
-    if !compare_dashmaps(&totest, upslist) {
-        clone_dashmap_into(&totest, upslist);
-        clone_idmap_into(&totest, idlist);
-    }
-}
-*/
-
 pub async fn initiate_upstreams(fullist: UpstreamsDashMap) -> UpstreamsDashMap {
-    let client = Client::builder().timeout(Duration::from_secs(2)).danger_accept_invalid_certs(true).build().unwrap();
-    build_upstreams(&fullist, "HEAD", &client).await
+    build_upstreams(&fullist, "HEAD").await
 }
 
-async fn build_upstreams(fullist: &UpstreamsDashMap, method: &str, client: &Client) -> UpstreamsDashMap {
+async fn build_upstreams(fullist: &UpstreamsDashMap, method: &str) -> UpstreamsDashMap {
     let totest: UpstreamsDashMap = DashMap::new();
     let fclone = clone_dashmap(fullist);
     for val in fclone.iter() {
@@ -56,18 +43,15 @@ async fn build_upstreams(fullist: &UpstreamsDashMap, method: &str, client: &Clie
 
             for upstream in path_entry.value().0.iter() {
                 let tls = if upstream.healthcheck.unwrap_or(true) {
-                    detect_tls(upstream.address.as_ref(), &upstream.port, client).await
+                    detect_tls(upstream.address.as_ref(), &upstream.port, host).await
                 } else {
-                    (false, None)
+                    false
                 };
-
-                let is_h2 = matches!(tls.1, Some(Version::HTTP_2));
-
                 let mut scheme = InnerMap {
                     address: upstream.address.clone(),
                     port: upstream.port,
-                    is_ssl: tls.0,
-                    is_http2: is_h2,
+                    is_ssl: tls,
+                    is_http2: false,
                     to_https: upstream.to_https,
                     rate_limit: upstream.rate_limit,
                     x4xx_limit: upstream.x4xx_limit,
@@ -77,20 +61,17 @@ async fn build_upstreams(fullist: &UpstreamsDashMap, method: &str, client: &Clie
                 };
 
                 if scheme.healthcheck.unwrap_or(true) {
-                    let link = if tls.0 {
+                    let link = if tls {
                         format!("https://{}:{}{}", upstream.address, upstream.port, path)
                     } else {
                         format!("http://{}:{}{}", upstream.address, upstream.port, path)
                     };
-
-                    let resp = http_request(&link, method, "", client).await;
+                    let resp = httpclient(method, tls, host, path, upstream.address.as_ref(), upstream.port, link).await;
                     if resp.0 {
                         if resp.1 {
-                            scheme.is_http2 = is_h2; // could be adjusted further
+                            scheme.is_http2 = resp.1;
                         }
                         innervec.push(Arc::from(scheme));
-                    } else {
-                        warn!("Dead Upstream : {}", link);
                     }
                 } else {
                     innervec.push(Arc::from(scheme));
@@ -103,51 +84,20 @@ async fn build_upstreams(fullist: &UpstreamsDashMap, method: &str, client: &Clie
     totest
 }
 
-async fn http_request(url: &str, method: &str, payload: &str, client: &Client) -> (bool, bool) {
-    if !["POST", "GET", "HEAD"].contains(&method) {
-        error!("Method {} not supported. Only GET|POST|HEAD are supported ", method);
-        return (false, false);
-    }
-    async fn send_request(client: &Client, method: &str, url: &str, payload: &str) -> Option<reqwest::Response> {
-        match method {
-            "POST" => client.post(url).body(payload.to_owned()).send().await.ok(),
-            "GET" => client.get(url).send().await.ok(),
-            "HEAD" => client.head(url).send().await.ok(),
-            _ => None,
-        }
-    }
+async fn detect_tls(ip: &str, port: &u16, sni: &str) -> bool {
+    let addr = format!("{ip}:{port}");
 
-    match send_request(client, method, url, payload).await {
-        Some(response) => {
-            let status = response.status().as_u16();
-            ((99..499).contains(&status), false)
-        }
-        None => (ping_grpc(url).await, true),
-    }
-}
-
-pub async fn ping_grpc(addr: &str) -> bool {
-    let endpoint = match Endpoint::from_shared(addr.to_owned()) {
-        Ok(e) => e.timeout(Duration::from_secs(2)),
+    let stream = match TcpStream::connect(&addr).await {
+        Ok(s) => s,
         Err(_) => return false,
     };
-    tokio::time::timeout(Duration::from_secs(3), endpoint.connect()).await.ok().and_then(Result::ok).is_some()
-}
 
-async fn detect_tls(ip: &str, port: &u16, client: &Client) -> (bool, Option<Version>) {
-    let https_url = format!("https://{}:{}", ip, port);
-    if let Ok(response) = client.get(&https_url).send().await {
-        return (true, Some(response.version()));
-    }
-    let http_url = format!("http://{}:{}", ip, port);
-    match client.get(&http_url).send().await {
-        Ok(response) => (false, Some(response.version())),
-        Err(_) => {
-            if ping_grpc(&http_url).await {
-                (false, Some(Version::HTTP_2))
-            } else {
-                (false, None)
-            }
-        }
-    }
+    let connector = tokio_native_tls::TlsConnector::from(
+        TlsConnector::builder()
+            .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_hostnames(true)
+            .build()
+            .unwrap(),
+    );
+    connector.connect(sni, stream).await.is_ok()
 }
