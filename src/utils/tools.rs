@@ -1,6 +1,6 @@
 use crate::tls::load;
 use crate::tls::load::CertificateConfig;
-use crate::utils::structs::{Extraparams, InnerMapForJson, UpstreamSnapshotForJson, UpstreamsDashMap, UpstreamsIdMap};
+use crate::utils::types::{Extraparams, InnerMapForJson, UpstreamSnapshotForJson, UpstreamsDashMap, UpstreamsIdMap};
 use dashmap::DashMap;
 use log::{error, info};
 use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -8,7 +8,6 @@ use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, Recursive
 use privdrop::PrivDrop;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::any::type_name;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 #[cfg(unix)]
@@ -23,13 +22,13 @@ use std::net::TcpListener;
 use std::os::unix::fs::MetadataExt;
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
+use std::process::Command;
 #[cfg(unix)]
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::fs;
+use std::{env, fs};
 #[cfg(unix)]
 use std::{process, thread, time};
 
@@ -57,24 +56,6 @@ pub fn print_upstreams(upstreams: &UpstreamsDashMap, extraparams: &Extraparams) 
     }
     info!("\n{}", out.trim_end());
 }
-#[allow(dead_code)]
-pub fn typeoff<T>(_: T) {
-    let to = type_name::<T>();
-    println!("{:?}", to);
-}
-
-#[allow(dead_code)]
-pub fn string_to_bool(val: Option<&str>) -> Option<bool> {
-    match val {
-        Some(v) => match v {
-            "yes" => Some(true),
-            "true" => Some(true),
-            _ => Some(false),
-        },
-        None => Some(false),
-    }
-}
-
 pub fn clone_dashmap(original: &UpstreamsDashMap) -> UpstreamsDashMap {
     let new_map: UpstreamsDashMap = DashMap::new();
 
@@ -219,34 +200,6 @@ pub fn listdir(dir: String) -> Vec<load::CertificateConfig> {
     certificate_configs
 }
 
-pub fn watch_folder(path: String, sender: Sender<Vec<CertificateConfig>>) -> notify::Result<()> {
-    let (tx, rx) = channel();
-    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
-    watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
-    info!("Watching for certificates in : {}", path);
-    let certificate_configs = listdir(path.clone());
-    sender.send(certificate_configs)?;
-    let mut start = Instant::now();
-    loop {
-        match rx.recv_timeout(Duration::from_secs(1)) {
-            Ok(Ok(event)) => match &event.kind {
-                EventKind::Modify(ModifyKind::Data(_)) | EventKind::Create(_) | EventKind::Remove(_) => {
-                    if start.elapsed() > Duration::from_secs(1) {
-                        start = Instant::now();
-                        let certificate_configs = listdir(path.clone());
-                        sender.send(certificate_configs)?;
-                        info!("Certificate changed: {:?}, {:?}", event.kind, event.paths);
-                    }
-                }
-                _ => {}
-            },
-            Ok(Err(e)) => error!("Watch error: {:?}", e),
-            Err(_) => {}
-        }
-    }
-}
-
-#[cfg(unix)]
 pub fn drop_priv(user: String, group: String, http_addr: String, tls_addr: Option<String>) {
     thread::sleep(time::Duration::from_millis(10));
     loop {
@@ -413,4 +366,19 @@ pub fn split_host_port(addr: &str, tls: bool) -> Option<(&str, u16, bool, &str)>
             }
         }
     };
+}
+
+pub fn get_hostname() -> String {
+    if let Ok(host) = env::var("HOSTNAME").or_else(|_| env::var("COMPUTERNAME")) {
+        if !host.trim().is_empty() {
+            return host;
+        }
+    }
+    Command::new("hostname")
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "unknown".to_string())
 }

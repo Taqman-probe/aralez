@@ -1,15 +1,82 @@
-use crate::utils::kuberconsul::{match_path, ConsulService, KubeEndpoints};
-use crate::utils::structs::{GlobalServiceMapping, InnerMap};
+use crate::ingress::consul::ConsulService;
+use crate::ingress::kuberconsul::match_path;
+use crate::ingress::kubernetes::KubeEndpointSliceList;
+use crate::utils::types::{GlobalServiceMapping, InnerMap};
+use ahash::HashMap;
 use dashmap::DashMap;
 use pingora_core::connectors::http::Connector;
 use pingora_core::listeners::ALPN;
 use pingora_core::prelude::HttpPeer;
 use pingora_http::RequestHeader;
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 pub static CONNECTOR: LazyLock<Connector> = LazyLock::new(|| Connector::new(None));
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+pub struct ConsulServicesInternal {
+    #[serde(rename = "aralez.host")]
+    pub host: String,
+    #[serde(rename = "aralez.path")]
+    pub path: String,
+    #[serde(rename = "aralez.auth")]
+    pub auth: Option<String>,
+    #[serde(rename = "aralez.redirect")]
+    pub redirect: Option<String>,
+    #[serde(rename = "aralez.rate")]
+    pub rate: Option<isize>,
+    #[serde(rename = "aralez.4xx_rate")]
+    pub xrate: Option<u32>,
+    #[serde(rename = "aralez.client_headers")]
+    pub client_headers: Option<Vec<String>>,
+    #[serde(rename = "aralez.server_headers")]
+    pub server_headers: Option<Vec<String>>,
+    #[serde(rename = "aralez.to_https")]
+    pub to_https: Option<bool>,
+}
+
+pub type ConsulServices = HashMap<String, ConsulServicesInternal>;
+
+pub async fn for_consul_list(url: &str, token: Option<String>) -> Option<ConsulServices> {
+    if let Some(data) = getfromapi(url, token, "consul").await {
+        let yo = parse_services(data);
+        if let Ok(y) = yo {
+            return Some(y);
+        }
+        return None;
+    }
+    None
+}
+
+fn parse_services(json: Vec<u8>) -> Result<ConsulServices, serde_json::Error> {
+    let raw: HashMap<String, Vec<String>> = serde_json::from_slice(&json)?;
+    Ok(raw
+        .into_iter()
+        .map(|(service, tags)| {
+            let mut internal = ConsulServicesInternal::default();
+            for tag in tags {
+                if let Some((key, value)) = tag.split_once('=') {
+                    match key {
+                        "aralez.host" => internal.host = value.to_string(),
+                        "aralez.path" => internal.path = value.to_string(),
+                        "aralez.rate" => internal.rate = value.parse::<isize>().ok(),
+                        "aralez.4xx_rate" => internal.xrate = value.parse::<u32>().ok(),
+                        "aralez.to_https" => internal.to_https = value.parse::<bool>().ok(),
+                        "aralez.auth" => internal.auth = Option::from(value.to_string()),
+                        "aralez.redirect" => internal.redirect = Option::from(value.to_string()),
+                        "aralez.client_header" => internal.client_headers.get_or_insert_default().push(value.to_string()),
+                        "aralez.server_header" => internal.server_headers.get_or_insert_default().push(value.to_string()),
+                        _ => {}
+                    }
+                }
+            }
+
+            (service, internal)
+        })
+        .collect())
+}
 
 pub async fn for_consul(url: &str, token: Option<String>, conf: &GlobalServiceMapping) -> Option<DashMap<Arc<str>, (Vec<Arc<InnerMap>>, AtomicUsize)>> {
     if let Some(data) = getfromapi(url, token, "consul").await {
@@ -17,17 +84,15 @@ pub async fn for_consul(url: &str, token: Option<String>, conf: &GlobalServiceMa
         let mut inner_vec = Vec::new();
         let upstreams: DashMap<Arc<str>, (Vec<Arc<InnerMap>>, AtomicUsize)> = DashMap::new();
         for subsets in endpoints {
-            let addr = subsets.tagged_addresses.get("lan_ipv4").unwrap().address.clone();
-            let prt = subsets.tagged_addresses.get("lan_ipv4").unwrap().port;
             let to_add = Arc::from(InnerMap {
-                address: Arc::from(&*addr),
-                port: prt,
+                address: Arc::from(&*subsets.address),
+                port: subsets.port,
                 is_ssl: false,
                 is_http2: false,
                 to_https: conf.to_https.unwrap_or(false),
                 rate_limit: conf.rate_limit,
                 x4xx_limit: conf.x4xx_limit,
-                redirect_to: None,
+                redirect_to: conf.redirect_to.clone().map(Arc::<str>::from),
                 healthcheck: None,
                 authorization: None,
             });
@@ -41,18 +106,29 @@ pub async fn for_consul(url: &str, token: Option<String>, conf: &GlobalServiceMa
 
 pub async fn for_kuber(url: &str, token: &str, conf: &GlobalServiceMapping) -> Option<DashMap<Arc<str>, (Vec<Arc<InnerMap>>, AtomicUsize)>> {
     if let Some(data) = getfromapi(url, Some(token.to_string()), "kubernetes").await {
-        let endpoints: KubeEndpoints = serde_json::from_slice(&data).ok()?;
+        let slice_list: KubeEndpointSliceList = serde_json::from_slice(&data).ok()?;
         let upstreams: DashMap<Arc<str>, (Vec<Arc<InnerMap>>, AtomicUsize)> = DashMap::new();
         let mut inner_vec = Vec::new();
 
-        if let Some(subsets) = endpoints.subsets {
-            for subset in subsets {
-                if let (Some(addresses), Some(ports)) = (subset.addresses, subset.ports) {
-                    for addr in addresses {
-                        for port in &ports {
+        for slice in slice_list.items {
+            let ports = match &slice.ports {
+                Some(p) if !p.is_empty() => p,
+                _ => continue,
+            };
+
+            for ep in &slice.endpoints {
+                let is_ready = ep.conditions.as_ref().and_then(|c| c.ready).unwrap_or(true);
+
+                if !is_ready {
+                    continue;
+                }
+
+                for addr in &ep.addresses {
+                    for port in ports {
+                        if let Some(port_num) = port.port {
                             let to_add = Arc::from(InnerMap {
-                                address: Arc::from(addr.ip.as_str()),
-                                port: port.port,
+                                address: Arc::from(addr.as_str()),
+                                port: port_num,
                                 is_ssl: false,
                                 is_http2: false,
                                 to_https: conf.to_https.unwrap_or(false),
@@ -68,6 +144,7 @@ pub async fn for_kuber(url: &str, token: &str, conf: &GlobalServiceMapping) -> O
                 }
             }
         }
+
         if !inner_vec.is_empty() {
             match_path(conf, &upstreams, inner_vec);
             return Some(upstreams);
@@ -75,6 +152,7 @@ pub async fn for_kuber(url: &str, token: &str, conf: &GlobalServiceMapping) -> O
     }
     None
 }
+
 pub async fn getfromapi(url: &str, token: Option<String>, provider: &str) -> Option<Vec<u8>> {
     let (host, port, path, is_tls) = parse_url(&url).ok()?;
 

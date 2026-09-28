@@ -1,9 +1,8 @@
 use crate::utils::healthcheck;
 use crate::utils::lazylock::REVERSE_STORE;
 use crate::utils::state::{is_first_run, mark_not_first_run};
-use crate::utils::structs::*;
 use crate::utils::tools::{clone_dashmap, clone_dashmap_into, print_upstreams};
-use crate::web::logging::log_builder;
+use crate::utils::types::*;
 use dashmap::DashMap;
 use log::{error, info, warn};
 use std::collections::HashMap;
@@ -91,7 +90,7 @@ pub async fn load_configuration(d: &str, kind: &str) -> (Option<Configuration>, 
             }
 
             info!("Reading upstreams from {}", d);
-            data // [2606:4700:2ff9::1]:443
+            data
         }
         "content" => {
             info!("Reading upstreams from API post body");
@@ -259,13 +258,12 @@ async fn populate_file_upstreams(config: &mut Configuration, parsed: &Config) {
     }
 }
 pub fn parce_main_config(path: &str) -> AppConfig {
-    let data = fs::read_to_string(path).unwrap();
+    let data = fs::read_to_string(path).expect("Failed to read main config file");
     let mut cfo: AppConfig = noyalib::from_str(&data).expect("Failed to parse main config file");
     if let Ok(jwt_key) = env::var("JWT_KEY") {
         cfo.master_key = Some(jwt_key);
     };
-
-    log_builder(&cfo, &cfo.log_file);
+    // log_builder(&cfo, &cfo.log_file);
     cfo.hc_method = cfo.hc_method.to_uppercase();
     if let Some((ip, port_str)) = cfo.config_address.rsplit_once(':') {
         if let Ok(port) = port_str.parse::<u16>() {

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aralez-tls
+  namespace: aralez
+type: kubernetes.io/tls
+data:
+  tls1.crt: "<FIRST_BASE64_CRT_HERE>"
+  tls1.key: "<FIRST_BASE64_KEY_HERE>"
+  tls2.crt: "<SECOND_BASE64_CRT_HERE>"
+  tls3.key: "<BASE64_BASE64_KEY_HERE>"
