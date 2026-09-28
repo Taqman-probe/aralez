@@ -2,8 +2,9 @@ use crate::tls::load;
 use crate::tls::load::CertificateConfig;
 use crate::utils::types::{Extraparams, InnerMapForJson, UpstreamSnapshotForJson, UpstreamsDashMap, UpstreamsIdMap};
 use dashmap::DashMap;
-use log::{error, info};
-use notify::{event::ModifyKind, Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+#[cfg(unix)]
+use log::error;
+use log::info;
 #[cfg(unix)]
 use privdrop::PrivDrop;
 use serde_json::{json, Value};
@@ -27,7 +28,6 @@ use std::process::Command;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::{env, fs};
 #[cfg(unix)]
 use std::{process, thread, time};
@@ -200,6 +200,12 @@ pub fn listdir(dir: String) -> Vec<load::CertificateConfig> {
     certificate_configs
 }
 
+#[cfg(windows)]
+pub fn drop_priv(_user: String, _group: String, _http_addr: String, _tls_addr: Option<String>) {
+    // Windows では権限破棄の概念がないため何もしない
+}
+
+#[cfg(unix)]
 pub fn drop_priv(user: String, group: String, http_addr: String, tls_addr: Option<String>) {
     thread::sleep(time::Duration::from_millis(10));
     loop {

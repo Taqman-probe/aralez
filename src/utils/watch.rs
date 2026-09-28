@@ -1,7 +1,5 @@
 use crate::tls::CertificateConfig;
 use crate::utils::parceyaml::load_configuration;
-use crate::utils::structs::Configuration;
-use log::error;
 use crate::utils::tools::listdir;
 use crate::utils::types::Configuration;
 use log::{error, info};

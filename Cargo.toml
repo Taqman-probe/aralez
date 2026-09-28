@@ -24,7 +24,7 @@ winresource = "0.1.31"
 
 [dependencies]
 tokio = { version = "1.53.1", features = ["full"] }
-pingora = { version = "0.9.0", features = ["lb", "openssl"] } # openssl, rustls, boringssl
+pingora = { version = "0.9.0", features = ["lb", "boringssl"] } # openssl, rustls, boringssl
 pingora-core = "0.9.0"
 pingora-proxy = "0.9.0"
 pingora-http = "0.9.0"
